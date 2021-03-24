@@ -1,0 +1,10 @@
+D:\Datasets\Space-Track gp_history\000000001-000100186.csv.gz
+D:\Datasets\Space-Track gp_history\000100187-000200206.csv.gz
+D:\Datasets\Space-Track gp_history\000200207-000300225.csv.gz
+D:\Datasets\Space-Track gp_history\000300226-000400247.csv.gz
+D:\Datasets\Space-Track gp_history\000400248-000500273.csv.gz
+D:\Datasets\Space-Track gp_history\000500274-000600294.csv.gz
+D:\Datasets\Space-Track gp_history\000600295-000700311.csv.gz
+D:\Datasets\Space-Track gp_history\000700312-000800333.csv.gz
+D:\Datasets\Space-Track gp_history\000800334-000900353.csv.gz
+D:\Datasets\Space-Track gp_history\000900354-001000370.csv.gz
