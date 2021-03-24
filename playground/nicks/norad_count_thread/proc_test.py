@@ -1,17 +1,11 @@
-import concurrent.futures
+import os
 import pandas as pd
+pd.options.display.html.table_schema = True
+pd.options.display.max_rows = None
 
-nums = [1,2,3,4,5,6,7,8,9,10]
+data_path = os.environ['my_home_path'] + '\data\space-track-gp-hist-sample'
 
-def f(x):
-    return x * x
-def main():
-    # Make sure the map and function are working
-    print([val for val in map(f, nums)])
+files = sorted([x for x in os.listdir(f'{data_path}\\') if x.endswith(".csv.gz")])
 
-    # Test to make sure concurrent map is working
-    with concurrent.futures.ProcessPoolExecutor() as executor:
-        print([val for val in executor.map(f, nums)])
-
-if __name__ == '__main__':
-    main()
+df = pd.read_csv(data_path + '\\' + files[1])
+df.head(20)
