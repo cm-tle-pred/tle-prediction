@@ -32,7 +32,8 @@ def write_output(all_counts):
     Writes the dictionary containing all the NORAD IDs
     to a file.
     '''
-    with open('multiproc_output.txt', 'w+') as f:
+    with open('../norad_debris_count.csv', 'w+') as f:
+        f.write('norad,count\n')
         for k,v in all_counts.items():
             f.write(str(k) + ',' + str(v) + '\n')
 
