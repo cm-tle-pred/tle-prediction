@@ -16,6 +16,9 @@ def load_norads(data_types=['train'], debug=False):
         validate and test are the same data.
         To access the final test data, use 'secret_test'
 
+    debug : bool
+        Print debug messages.  Default is False.
+
     Returns
     -------
     dict
@@ -57,6 +60,20 @@ def load_norads(data_types=['train'], debug=False):
 
     return norad_lists
 
+def __load(norad_lists, file):
+    '''
+    Concurrent/Multiprocessing task that loads a csv.gz file
+
+    WORK IN PROGRESS
+    '''
+    # try:
+    #     # df = pd.read_csv(file_path, compression='gzip', low_memory=False)
+    #     # df = df[(df.MEAN_MOTION > 11.25) & (df.ECCENTRICITY < 0.25) & (df.OBJECT_TYPE != 'PAYLOAD')]
+    # except:
+    #     # raise Exception(f'Failed to open {file_path}')
+    # return Counter(df)
+    return None
+
 def load_data(norad_lists, use_all_data=False, debug=False):
     '''
     Load gp_history csv.gz files into a pandas dataframe
@@ -67,11 +84,22 @@ def load_data(norad_lists, use_all_data=False, debug=False):
         key : data_type (such as train, validate, or test )
         value : list of ints containing the NORAD IDs within in output dataframe
 
+    use_all_data : bool
+        Use all the .csv.gz gp_history files.  Default is False.
+
+    debug : bool
+        Print debug messages.  Default is False.
+
     Returns
     -------
     dict
         a dictionary of pandas dataframes containing the TLE gp_history for all
         NORAD IDs for each data_type
+
+    Raises
+    ------
+    ValueError
+        If norad_lists is empty
     '''
 
     if len(norad_lists.keys()) == 0:
@@ -109,6 +137,49 @@ def load_data(norad_lists, use_all_data=False, debug=False):
         df_out[data_type] = pd.concat(df_list).reset_index()
     return df_out
 
+def write_raw_data(df_dict, use_all_data=False, debug=False, sub_path='/raw_compiled'):
+    '''
+    Writes all dataframes in df_dict to separate pickle files.
+
+    Parameters
+    ----------
+    df_dict : dict
+        key : data_type (such as train, validate, or test )
+        value : list of ints containing the NORAD IDs within in output dataframe
+
+    use_all_data : bool
+        Use all the .csv.gz gp_history files.  Default is False.
+
+    debug : bool
+        Print debug messages.  Default is False.
+
+    sub_path : str
+        sub path where to write pickle files to.  Default is raw_compiled.
+
+    Raises
+    ------
+    ValueError
+        If df_dict is empty
+    '''
+
+    #if len(df_dict.keys()) == 0 or all([type(x)==type(pd.DataFrame()) for x in df_dict.values()]):
+    if len(df_dict.keys()) == 0:
+        raise ValueError('df_dict must contain at least item and all must be pandas dataframes')
+
+    if use_all_data==True:
+        store_path = os.environ['GP_HIST_PATH'] + sub_path
+    else:
+        store_path = os.environ['my_home_path'] + '/data/space-track-gp-hist-sample' + sub_path
+
+    for data_type, df in df_dict.items():
+        file_name = data_type  + '.pkl.gz'
+        path = store_path + '/' + file_name
+        if debug:
+            print(f'Writing raw data for {data_type} to: {path}')
+        df.to_pickle(path)
+    if debug:
+        print(f'Done writing output.')
+
 if __name__ == '__main__':
     import argparse
 
@@ -117,6 +188,7 @@ if __name__ == '__main__':
     parser.add_argument('--validate', action='store_const', const=True, default=False, help='Load validate data')
     parser.add_argument('--secret', action='store_const', const=True, default=False, help='Load secret test data')
     parser.add_argument('--use_all_data', action='store_const', const=True, default=False, help='Use all gp_history data.')
+    parser.add_argument('--write', action='store_const', const=True, default=False, help='Write output to pickle files.')
 
     args = parser.parse_args()
 
@@ -136,3 +208,7 @@ if __name__ == '__main__':
     for k,v in df_dict.items():
         print(f'{k} has {len(v)} items:')
         print(v.head())
+
+    # Write output
+    if args.write:
+        write_raw_data(df_dict, args.use_all_data, True)
