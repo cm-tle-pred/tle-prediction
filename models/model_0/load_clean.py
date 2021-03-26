@@ -9,7 +9,7 @@ def load_norads(data_types=['train'], debug=False):
 
     Parameters
     ----------
-    type : list
+    data_types : list
         list of strings containing the following possibilities: train, validate, test (default is ['train'])
 
         NOTES:
@@ -24,10 +24,13 @@ def load_norads(data_types=['train'], debug=False):
     Raises
     ------
     ValueError
-        If unexpected data_type
+        If unexpected data_types
     '''
 
     norad_lists = {}
+
+    if len(data_types) == 0:
+        raise ValueError('data_types must contain at least one item')
 
     for data_type in data_types:
         if data_type == 'train':
@@ -57,7 +60,22 @@ def load_norads(data_types=['train'], debug=False):
 def load_data(norad_lists, use_all_data=False, debug=False):
     '''
     Load gp_history csv.gz files into a pandas dataframe
+
+    Parameters
+    ----------
+    norad_lists : dict
+        key : data_type (such as train, validate, or test )
+        value : list of ints containing the NORAD IDs within in output dataframe
+
+    Returns
+    -------
+    dict
+        a dictionary of pandas dataframes containing the TLE gp_history for all
+        NORAD IDs for each data_type
     '''
+
+    if len(norad_lists.keys()) == 0:
+        raise ValueError('norad_lists must contain at least one list')
 
     if use_all_data==True:
         csv_store_path = os.environ['GP_HIST_PATH']
@@ -83,14 +101,13 @@ def load_data(norad_lists, use_all_data=False, debug=False):
                          compression='gzip',
                          low_memory=False)
         for data_type, norad_list in norad_lists.items():
-            df = df[df.NORAD_CAT_ID.isin(norad_list)][necessary_columns]
-            df_dict[data_type] = df_dict[data_type].append(df)
+            odf = df[df.NORAD_CAT_ID.isin(norad_list)][necessary_columns]
+            df_dict[data_type].append(odf)
 
+    df_out = {}
     for data_type, df_list in df_dict.items():
-        df_dict[data_type] = pd.concat(df_list).reset_index()
-    # dfs = pd.concat(df_list)
-    # dfs = dfs.reset_index()
-    return df_dict
+        df_out[data_type] = pd.concat(df_list).reset_index()
+    return df_out
 
 if __name__ == '__main__':
     import argparse
@@ -117,5 +134,5 @@ if __name__ == '__main__':
     df_dict = load_data(norad_lists, args.use_all_data, True)
 
     for k,v in df_dict.items():
-        print(f'{k} items:')
+        print(f'{k} has {len(v)} items:')
         print(v.head())
