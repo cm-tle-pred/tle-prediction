@@ -72,34 +72,50 @@ def load_data(norad_lists, use_all_data=False, debug=False):
                          'ECCENTRICITY', 'ARG_OF_PERICENTER', 'MEAN_ANOMALY', 'MEAN_MOTION', 'EPOCH']
 
     files = sorted([x for x in os.listdir(f'{csv_store_path}/') if x.endswith(".csv.gz")])
-    df_list = []
+    df_dict = {}
+    for data_type in norad_lists.keys():
+        df_dict[data_type] = []
+
     for f in tqdm(files):
         df = pd.read_csv(f'{csv_store_path}/{f}',
                          parse_dates=['EPOCH'],
                          infer_datetime_format=True,
                          compression='gzip',
                          low_memory=False)
-        df = df[df.NORAD_CAT_ID.isin(norad_list)][necessary_columns]
-        df_list.append(df)
+        for data_type, norad_list in norad_lists.items():
+            df = df[df.NORAD_CAT_ID.isin(norad_list)][necessary_columns]
+            df_dict[data_type] = df_dict[data_type].append(df)
 
-    dfs = pd.concat(df_list)
-    dfs = dfs.reset_index()
-    return dfs
+    for data_type, df_list in df_dict.items():
+        df_dict[data_type] = pd.concat(df_list).reset_index()
+    # dfs = pd.concat(df_list)
+    # dfs = dfs.reset_index()
+    return df_dict
 
 if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-t', help='While data to load (train/validate/test). NOTE: validate and test are the same.  To access final test, use secret_test')
+    parser.add_argument('--train', action='store_const', const=True, default=False, help='Load train data')
+    parser.add_argument('--validate', action='store_const', const=True, default=False, help='Load validate data')
+    parser.add_argument('--secret', action='store_const', const=True, default=False, help='Load secret test data')
     parser.add_argument('--use_all_data', action='store_const', const=True, default=False, help='Use all gp_history data.')
 
     args = parser.parse_args()
 
     # Get the NORAD list
-    #norad_list = load_norads(args.data_type, True)
-    norad_list = load_norads(['train', 'test', 'train', 'validate'], True)
+    data_types = []
+    if args.train:
+        data_types.append('train')
+    if args.validate:
+        data_types.append('validate')
+    if args.secret:
+        data_types.append('secret_test')
+    norad_lists = load_norads(data_types, True)
 
     # Get the pandas dataframe
-    #df = load_data(norad_list, args.use_all_data, True)
+    df_dict = load_data(norad_lists, args.use_all_data, True)
 
-    #print(df.head())
+    for k,v in df_dict.items():
+        print(f'{k} items:')
+        print(v.head())
