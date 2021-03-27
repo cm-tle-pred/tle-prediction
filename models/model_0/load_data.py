@@ -60,19 +60,105 @@ def load_norads(data_types=['train'], debug=False):
 
     return norad_lists
 
-def __load(norad_lists, file):
+def __load_task(norad_lists, file_path):
     '''
     Concurrent/Multiprocessing task that loads a csv.gz file
-
-    WORK IN PROGRESS
     '''
-    # try:
-    #     # df = pd.read_csv(file_path, compression='gzip', low_memory=False)
-    #     # df = df[(df.MEAN_MOTION > 11.25) & (df.ECCENTRICITY < 0.25) & (df.OBJECT_TYPE != 'PAYLOAD')]
-    # except:
-    #     # raise Exception(f'Failed to open {file_path}')
-    # return Counter(df)
-    return None
+
+    necessary_columns = ['NORAD_CAT_ID','OBJECT_TYPE','OBJECT_NAME','TLE_LINE1','TLE_LINE2',
+                         'MEAN_MOTION_DOT', 'MEAN_MOTION_DDOT', 'BSTAR', 'INCLINATION', 'RA_OF_ASC_NODE',
+                         'ECCENTRICITY', 'ARG_OF_PERICENTER', 'MEAN_ANOMALY', 'MEAN_MOTION', 'EPOCH']
+    df_dict = {}
+    for data_type in norad_lists.keys():
+        df_dict[data_type] = []
+    try:
+        # df = pd.read_csv(file_path, compression='gzip', low_memory=False)
+        # df = df[(df.MEAN_MOTION > 11.25) & (df.ECCENTRICITY < 0.25) & (df.OBJECT_TYPE != 'PAYLOAD')]
+        df = pd.read_csv(file_path,
+                         parse_dates=['EPOCH'],
+                         infer_datetime_format=True,
+                         compression='gzip',
+                         low_memory=False)
+        for data_type, norad_list in norad_lists.items():
+            df_dict[data_type] = df[df.NORAD_CAT_ID.isin(norad_list)][necessary_columns]
+    except:
+        raise Exception(f'Failed to open {file_path}')
+    return df_dict
+
+def load_data_multi(norad_lists, use_all_data=False, debug=False, threaded=False):
+    '''
+    Load gp_history csv.gz files into a pandas dataframe using multiple
+    processes or threads
+
+    Parameters
+    ----------
+    norad_lists : dict
+        key : data_type (such as train, validate, or test )
+        value : list of ints containing the NORAD IDs within in output dataframe
+
+    use_all_data : bool
+        Use all the .csv.gz gp_history files.  Default is False.
+
+    debug : bool
+        Print debug messages.  Default is False.
+
+    threaded : bool
+        Use threads instead of processes.  Default is False.
+
+    Returns
+    -------
+    dict
+        a dictionary of pandas dataframes containing the TLE gp_history for all
+        NORAD IDs for each data_type
+
+    Raises
+    ------
+    ValueError
+        If norad_lists is empty
+    '''
+
+    if len(norad_lists.keys()) == 0:
+        raise ValueError('norad_lists must contain at least one list')
+
+    if use_all_data==True:
+        csv_store_path = os.environ['GP_HIST_PATH']
+    else:
+        csv_store_path = os.environ['my_home_path'] + '/data/space-track-gp-hist-sample'
+
+    if debug:
+        print(f'Loading files from path: {csv_store_path}')
+
+    files = sorted([x for x in os.listdir(f'{csv_store_path}/') if x.endswith(".csv.gz")])
+    df_dict = {}
+    for data_type in norad_lists.keys():
+        df_dict[data_type] = []
+
+    if threaded:
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            results = executor.map(__load_task, files)
+            if debug:
+                print('Finished loading all files. Starting assembly.')
+            for result in results:
+                for data_type, df in result:
+                    df_dict[data_type].append(df)
+            if debug:
+                print('Finished assembly.')
+
+    else:
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            results = executor.map(__load_task, files)
+            if debug:
+                print('Finished loading all files. Starting assembly.')
+            for result in results:
+                for data_type, df in result:
+                    df_dict[data_type].append(df)
+            if debug:
+                print('Finished assembly.')
+
+    df_out = {}
+    for data_type, df_list in df_dict.items():
+        df_out[data_type] = pd.concat(df_list).reset_index()
+    return df_out
 
 def load_data(norad_lists, use_all_data=False, debug=False):
     '''
@@ -189,6 +275,8 @@ if __name__ == '__main__':
     parser.add_argument('--secret', action='store_const', const=True, default=False, help='Load secret test data')
     parser.add_argument('--use_all_data', action='store_const', const=True, default=False, help='Use all gp_history data.')
     parser.add_argument('--write', action='store_const', const=True, default=False, help='Write output to pickle files.')
+    parser.add_argument('--multiprocess', action='store_const', const=True, default=False, help='Use multiprocessing for loading.')
+    parser.add_argument('--multithreaded', action='store_const', const=True, default=False, help='Use multithreading for loading.')
 
     args = parser.parse_args()
 
@@ -203,7 +291,12 @@ if __name__ == '__main__':
     norad_lists = load_norads(data_types, True)
 
     # Get the pandas dataframe
-    df_dict = load_data(norad_lists, args.use_all_data, True)
+    if args.multiprocess:
+        df_dict = load_data_multi(norad_lists, args.use_all_data, True)
+    elif args.multithreaded:
+        df_dict = load_data_multi(norad_lists, args.use_all_data, True, True)
+    else:
+        df_dict = load_data(norad_lists, args.use_all_data, True)
 
     for k,v in df_dict.items():
         print(f'{k} has {len(v)} items:')
