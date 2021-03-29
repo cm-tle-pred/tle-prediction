@@ -13,7 +13,7 @@ def build_file_list(file_name):
     files = sorted([x for x in os.listdir(f'{csv_store_path}/') if x.endswith(".csv.gz")])
     with open(file_name, 'w+') as f:
         for file in files:
-            f.write(csv_store_path + '\\' + file + '\n')
+            f.write(csv_store_path + '/' + file + '\n')
 
 def task(file_path):
     '''
