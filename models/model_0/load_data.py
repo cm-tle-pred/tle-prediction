@@ -68,7 +68,6 @@ def load_norads(data_types=['train'], debug=False):
     return norad_lists
 
 def __load_task(norad_lists, file_path):
-    #def __load_task(file_path):
     '''
     Concurrent/Multiprocessing supported task that loads a csv.gz file
     '''
@@ -91,20 +90,6 @@ def __load_task(norad_lists, file_path):
     except Exception as e:
         raise Exception(f'Failed to open {file_path}.  Error: {e}')
     return df_dict
-    # necessary_columns = ['NORAD_CAT_ID','OBJECT_TYPE','OBJECT_NAME','TLE_LINE1',
-    #                      'TLE_LINE2','MEAN_MOTION_DOT', 'MEAN_MOTION_DDOT',
-    #                      'BSTAR', 'INCLINATION', 'RA_OF_ASC_NODE',
-    #                      'ECCENTRICITY', 'ARG_OF_PERICENTER', 'MEAN_ANOMALY',
-    #                      'MEAN_MOTION', 'EPOCH']
-    # try:
-    #     df = pd.read_csv(file_path,
-    #                      parse_dates=['EPOCH'],
-    #                      infer_datetime_format=True,
-    #                      compression='gzip',
-    #                      low_memory=False)
-    #     return df[necessary_columns]
-    # except Exception as e:
-    #     raise Exception(f'Failed to open {file_path}.  Error: {e}')
 
 def load_data(norad_lists, use_all_data=False, debug=False, threaded=False,
               multiproc=False):
@@ -167,7 +152,6 @@ def load_data(norad_lists, use_all_data=False, debug=False, threaded=False,
                     df_dict[data_type].append(df)
             if debug:
                 print('Finished loading.')
-
     elif multiproc:
         with concurrent.futures.ProcessPoolExecutor() as executor:
             results = list(tqdm(executor.map(__load_task, repeat(norad_lists), files), total=len(files)))
@@ -176,19 +160,6 @@ def load_data(norad_lists, use_all_data=False, debug=False, threaded=False,
                     df_dict[data_type].append(df)
             if debug:
                 print('Finished loading.')
-        # df = pd.DataFrame()
-        # with tqdm(total=len(files)) as pbar:
-        #     with concurrent.futures.ProcessPoolExecutor() as executor:
-        #         tasks = [executor.submit(__load_task, f) for f in files]
-        #         for t in concurrent.futures.as_completed(tasks):
-        #             df = pd.concat([df, t.result()])
-        #             pbar.update(1)
-        # df_out = {}
-        # for data_type, norad_list in tqdm(norad_lists.items()):
-        #     df_out[data_type] = df[df.NORAD_CAT_ID.isin(norad_list)]
-        # if debug:
-        #     print('Finished loading.')
-
     else:
         for f in tqdm(files):
             for data_type, df in __load_task(norad_lists, f).items():
@@ -209,8 +180,7 @@ def __write_task(df, path, debug=False):
     if debug:
         print(f'Writing raw data for to: {path}')
     df.to_pickle(path)
-    if debug:
-        print(f'Finished saving {path}')
+    return path
 
 def write_data(df_dict, use_all_data=False, debug=False,
                    sub_path='/raw_compiled', threaded=False,
@@ -241,6 +211,7 @@ def write_data(df_dict, use_all_data=False, debug=False,
 
     multiproc : bool
         Use multiple processes.  Default is False.
+        NOTE: Not used.  Will instead enable multithrading
 
     Raises
     ------
@@ -255,24 +226,20 @@ def write_data(df_dict, use_all_data=False, debug=False,
         store_path = os.environ['GP_HIST_PATH'] + sub_path
     else:
         store_path = os.environ['my_home_path'] + '/data/space-track-gp-hist-sample' + sub_path
-    paths = [store_path + '/' + data_type + '.pkl' for data_type in df_dict.keys()]
+    paths = [store_path + '/' + data_type + '.pkl.gz' for data_type in df_dict.keys()]
 
     if debug:
         print(f'Saving files to path: {store_path}')
+
+    if multiproc:
+        # Force threaded to save memory
+        threaded=True
 
     if threaded:
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
             tasks = [executor.submit(__write_task, df, paths[i], debug) for i, df in enumerate(df_dict.values())]
             for t in concurrent.futures.as_completed(tasks):
                 print(f'Finished saving {t.result()}')
-
-    elif multiproc:
-        with concurrent.futures.ProcessPoolExecutor(max_workers=3) as executor:
-            # tasks = [executor.submit(__write_task, df, paths[i], debug) for i, df in enumerate(df_dict.values())]
-            # for t in concurrent.futures.as_completed(tasks):
-            #     print(f'Finished saving {t.result()}')
-            executor.map(__write_task, list(df_dict.values()), paths, repeat(debug))
-            #if concurrent.futures.wait()
     else:
         for i, df in enumerate(df_dict.values()):
             path = paths[i]
