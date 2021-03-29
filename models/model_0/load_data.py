@@ -232,7 +232,7 @@ def write_data(df_dict, use_all_data=False, debug=False,
         print(f'Saving files to path: {store_path}')
 
     if multiproc:
-        # Force threaded to save memory
+        # Force threaded to save memory and prevent memory errors
         threaded=True
 
     if threaded:
