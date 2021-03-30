@@ -22,9 +22,9 @@ def task(file_path):
     '''
     try:
         df = pd.read_csv(file_path, compression='gzip', low_memory=False)
-        df = df[(df.MEAN_MOTION > 11.25) & (df.ECCENTRICITY < 0.25) & (df.OBJECT_TYPE != 'PAYLOAD')]
-    except:
-        raise Exception(f'Failed to open {file_path}')
+        df = df[(df.MEAN_MOTION > 11.25) & (df.ECCENTRICITY < 0.25) & (~df.OBJECT_TYPE.isin(['PAYLOAD','TBA']))]
+    except Exception as e:
+        raise Exception(f'Failed to open {file_path}: {e}')
     return Counter(df.NORAD_CAT_ID.to_list())
 
 def write_output(all_counts):
@@ -32,7 +32,7 @@ def write_output(all_counts):
     Writes the dictionary containing all the NORAD IDs
     to a file.
     '''
-    with open('../norad_debris_count.csv', 'w+') as f:
+    with open(os.environ['my_home_path'] + '/data/norad_debris_count.csv', 'w+') as f:
         f.write('norad,count\n')
         for k,v in all_counts.items():
             f.write(str(k) + ',' + str(v) + '\n')
