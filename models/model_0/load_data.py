@@ -5,7 +5,7 @@ from tqdm import tqdm
 import concurrent.futures
 from itertools import repeat
 
-def load_norads(data_types=['train'], debug=False):
+def load_norads(data_types=['train'], debug=False, path=None):
     '''
     Loads the NORAD IDs for each data_type
 
@@ -25,6 +25,9 @@ def load_norads(data_types=['train'], debug=False):
 
     debug : bool
         Print debug messages.  Default is False.
+
+    path : str
+        Path to file locations
 
     Returns
     -------
@@ -56,7 +59,10 @@ def load_norads(data_types=['train'], debug=False):
         if debug:
             print(f'Loading NORAD list from file: {file_name}')
 
-        norad_df = pd.read_pickle(os.environ['my_home_path'] + '/data/split_by_norad/' + file_name)
+        if path == None:
+            norad_df = pd.read_pickle(os.environ['my_home_path'] + '/data/split_by_norad/' + file_name)
+        else:
+            norad_df = pd.read_pickle(path + file_name)
         norad_list = norad_df.norad.to_list()
         norad_lists[data_type] = norad_list
 
@@ -92,7 +98,7 @@ def __load_task(norad_lists, file_path):
     return df_dict
 
 def load_data(norad_lists, use_all_data=False, debug=False, threaded=False,
-              multiproc=False):
+              multiproc=False, path=None):
     '''
     Load gp_history csv.gz files into a pandas dataframe.
 
@@ -116,6 +122,9 @@ def load_data(norad_lists, use_all_data=False, debug=False, threaded=False,
     multiproc : bool
         Use multiple processes.  Default is False.
 
+    path : str
+        Path to file locations
+
     Returns
     -------
     dict
@@ -131,7 +140,9 @@ def load_data(norad_lists, use_all_data=False, debug=False, threaded=False,
     if len(norad_lists.keys()) == 0:
         raise ValueError('norad_lists must contain at least one list')
 
-    if use_all_data==True:
+    if path != None:
+        csv_store_path = path
+    elif use_all_data==True:
         csv_store_path = os.environ['GP_HIST_PATH']
     else:
         csv_store_path = os.environ['my_home_path'] + '/data/space-track-gp-hist-sample'
@@ -184,7 +195,7 @@ def __write_task(df, path, debug=False):
 
 def write_data(df_dict, use_all_data=False, debug=False,
                    sub_path='/raw_compiled', threaded=False,
-                   multiproc=False, compressed=False):
+                   multiproc=False, compressed=False, path=None):
     '''
     Writes all dataframes in df_dict to separate pickle files.
 
@@ -217,6 +228,9 @@ def write_data(df_dict, use_all_data=False, debug=False,
         Compress the pickle files into pkl.gz files.  Default is False.
         NOTE: Compression takes a lot of extra time.
 
+    path : str
+        Path to file locations.
+
     Raises
     ------
     ValueError
@@ -226,7 +240,9 @@ def write_data(df_dict, use_all_data=False, debug=False,
     if len(df_dict.keys()) == 0:
         raise ValueError('df_dict must contain at least one item and all must be pandas dataframes')
 
-    if use_all_data==True:
+    if path != None:
+        store_path = path
+    elif use_all_data==True:
         store_path = os.environ['GP_HIST_PATH'] + sub_path
     else:
         store_path = os.environ['my_home_path'] + '/data/space-track-gp-hist-sample' + sub_path
