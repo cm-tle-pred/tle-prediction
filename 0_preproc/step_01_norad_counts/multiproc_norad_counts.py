@@ -22,7 +22,7 @@ def task(file_path):
     '''
     try:
         df = pd.read_csv(file_path, compression='gzip', low_memory=False)
-        df = df[(df.MEAN_MOTION > 11.25) & (df.ECCENTRICITY < 0.25) & (~df.OBJECT_TYPE.isin(['PAYLOAD','TBA']))]
+        df = df[(df.MEAN_MOTION > 11.25) & (df.ECCENTRICITY < 0.25) & (df.OBJECT_TYPE == 'DEBRIS')]
     except Exception as e:
         raise Exception(f'Failed to open {file_path}: {e}')
     return Counter(df.NORAD_CAT_ID.to_list())
