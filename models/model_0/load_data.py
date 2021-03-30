@@ -184,7 +184,7 @@ def __write_task(df, path, debug=False):
 
 def write_data(df_dict, use_all_data=False, debug=False,
                    sub_path='/raw_compiled', threaded=False,
-                   multiproc=False):
+                   multiproc=False, compressed=False):
     '''
     Writes all dataframes in df_dict to separate pickle files.
 
@@ -213,6 +213,10 @@ def write_data(df_dict, use_all_data=False, debug=False,
         Use multiple processes.  Default is False.
         NOTE: Not used.  Will instead enable multithrading
 
+    compressed : bool
+        Compress the pickle files into pkl.gz files.  Default is False.
+        NOTE: Compression takes a lot of extra time.
+
     Raises
     ------
     ValueError
@@ -226,7 +230,11 @@ def write_data(df_dict, use_all_data=False, debug=False,
         store_path = os.environ['GP_HIST_PATH'] + sub_path
     else:
         store_path = os.environ['my_home_path'] + '/data/space-track-gp-hist-sample' + sub_path
-    paths = [store_path + '/' + data_type + '.pkl.gz' for data_type in df_dict.keys()]
+
+    if compressed:
+        paths = [store_path + '/' + data_type + '.pkl.gz' for data_type in df_dict.keys()]
+    else:
+        paths = [store_path + '/' + data_type + '.pkl' for data_type in df_dict.keys()]
 
     if debug:
         print(f'Saving files to path: {store_path}')
