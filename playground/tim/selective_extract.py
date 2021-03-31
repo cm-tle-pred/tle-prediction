@@ -27,13 +27,10 @@ def task(file_path):
         df = df[(df.MEAN_MOTION > 11.25) & (df.ECCENTRICITY < 0.25) & (df.OBJECT_TYPE != 'PAYLOAD')]
         
         norad_ids = [25988, 26285, 12223, 16720]
-        
-        df = df
-        norad_ids = ["25988", "26285", "12223", "16720"]
         df = df[df.NORAD_CAT_ID.isin(norad_ids)]
     except:
         raise Exception(f'Failed to open {file_path}')
-    return Counter(df.NORAD_CAT_ID.to_list())
+    return df
 
 
 def main():
@@ -41,16 +38,16 @@ def main():
     build_file_list(file_list)
 
     ts = time()
-    all_counts = Counter()
+    final_df = None
     files = [file[:-1] for file in open(file_list).readlines()]
-
+    results = None
     with concurrent.futures.ProcessPoolExecutor() as executor:
         results = list(tqdm(executor.map(task, files), total=len(files)))
-        for result in results:
-            all_counts += result
 
+    final_df = pd.concat(results)
     print(f'Took {time()-ts}')
-    write_output(all_counts)
+    final_df.to_pickle(f"./sample.pkl")
+
 
 if __name__ == '__main__':
     main()
