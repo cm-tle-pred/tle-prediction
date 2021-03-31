@@ -128,3 +128,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 0.0.7
+
+# VIM swap files
+*.swp
