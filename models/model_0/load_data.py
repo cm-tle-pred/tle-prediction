@@ -216,6 +216,7 @@ def write_data(df_dict, use_all_data=False, debug=False,
     sub_path : str
         sub path where to write pickle files to.  Default is '/raw_compiled'.
         Must be prefixed with '/'
+        Not needed if path specified.
 
     threaded : bool
         Use multiple threads.  Default is False.
