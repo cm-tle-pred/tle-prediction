@@ -5,6 +5,14 @@ from datetime import datetime
 from tqdm import tqdm
 import os
 
+def normalize(df,max=None,min=None,mean=None,std=None):
+    if mean!=None and std!=None:
+        return (df - mean)/std
+    elif min!=None and max!=None:
+        return (df - min) / (max - min)
+    else:
+        raise ValueError(f"Normalization type is not recognized. Require max/min or mean/std.")
+
 def jday_convert(x):
     '''
     Algorithm from python-sgp4:
