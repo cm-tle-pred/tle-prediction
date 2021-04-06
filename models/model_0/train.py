@@ -32,21 +32,21 @@ def load_index_map():
     return idx_pairs
 
 def train_model(df, idx_pairs, model_cols=None, hiddenSize=300, batchSize=2000,
-                learningRate=0.01, numEpochs=1, target='cpu', num_workers=0,
-                print_itr=1000):
+                learningRate=0.01, numEpochs=1, device='cpu', num_workers=0,
+                print_itr=1000, save_model=False):
     torch.manual_seed(0)
 
-    device = torch.device(target)
+    device = torch.device(device)
 
     if model_cols is None:
         model_cols = ['MEAN_MOTION_DOT', 'MEAN_MOTION_DDOT', 'BSTAR', 'INCLINATION', 'RA_OF_ASC_NODE',
                       'ECCENTRICITY', 'ARG_OF_PERICENTER', 'MEAN_ANOMALY', 'MEAN_MOTION', 'epoch_jd', 'epoch_fr']
 
     print('>>> Loading model')
-    net = NNModel(len(model_cols) + 2, len(model_cols) - 2, hiddenSize)
-    to_device(net, device)
+    model = NNModel(len(model_cols) + 2, len(model_cols) - 2, hiddenSize)
+    to_device(model, device)
     criterion = nn.L1Loss()
-    optimizer = torch.optim.Adam(net.parameters(), lr=learningRate)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learningRate)
 
     print('>>> Loading dataset')
     trainDataset = Dataset(df[model_cols], idx_pairs, device)
@@ -66,7 +66,7 @@ def train_model(df, idx_pairs, model_cols=None, hiddenSize=300, batchSize=2000,
         for i, (inputs, labels) in enumerate(trainLoader):
             optimizer.zero_grad()
             # Forward propagation
-            outputs = net(inputs)
+            outputs = model(inputs)
             # Backpropagation
             loss = criterion(outputs, labels)
             loss.backward()
@@ -81,10 +81,17 @@ def train_model(df, idx_pairs, model_cols=None, hiddenSize=300, batchSize=2000,
                       round(time()-ts)))
                 ts = time()
 
-    net.eval()
-    torch.save(net.state_dict(), 'model_0.pth')
+    model.eval()
+    if save_model:
+        torch.save(model.state_dict(), 'model_0.pth')
+        print('Model saved as model_0.pth')
 
-    return net
+    return model
+
+def predict(model, X, device='cpu'):
+    X_tensor = to_device(torch.from_numpy(X.to_numpy()).float(), device)
+    nn_results = model(X_tensor).detach().cpu().numpy()
+    return nn_results
 
 if __name__ == '__main__':
     import argparse

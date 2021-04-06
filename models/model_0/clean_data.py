@@ -5,14 +5,17 @@ from datetime import datetime
 from tqdm import tqdm
 import os
 
-def normalize_all_columns(df):
+def normalize_all_columns(df, reverse=False):
     '''
-    Normalizes a dataframe
+    Normalizes all dataframe columns
 
     Parameters
     ----------
     df : DataFrame or Series
         gp_history dataframe to be normalized
+
+    reverse : bool
+        Reverse normalization
 
     Returns
     -------
@@ -22,21 +25,22 @@ def normalize_all_columns(df):
     from_180_deg = ['INCLINATION']
     from_360_deg = ['RA_OF_ASC_NODE', 'MEAN_ANOMALY', 'ARG_OF_PERICENTER']
 
-    df[from_180_deg] = normalize(df[from_180_deg],min=0,max=180)
-    df[from_360_deg] = normalize(df[from_360_deg],min=0,max=360)
-    df['MEAN_MOTION'] = normalize(df['MEAN_MOTION'],mean=13.75314,std=2.212779)
-    df['ECCENTRICITY'] = np.cbrt(df['ECCENTRICITY'])
-    df['BSTAR'] = df['BSTAR']*20
+    df[from_180_deg] = normalize(df[from_180_deg],min=0,max=180,reverse=reverse)
+    df[from_360_deg] = normalize(df[from_360_deg],min=0,max=360,reverse=reverse)
+    df['MEAN_MOTION'] = normalize(df['MEAN_MOTION'],mean=13.75314,std=2.212779,reverse=reverse)
+
+    if not reverse:
+        df['ECCENTRICITY'] = np.cbrt(df['ECCENTRICITY'])
+        df['BSTAR'] = df['BSTAR']*20
+    else:
+        df['ECCENTRICITY'] = df['ECCENTRICITY']**3
+        df['BSTAR'] = df['BSTAR']/20
 
     return df
 
-def reverse_normalize_all_columns():
-    raise NotImplementedError("For validation purposes")
-
-
-def normalize(df,max=None,min=None,mean=None,std=None):
+def normalize(df,max=None,min=None,mean=None,std=None,reverse=False):
     '''
-    Normalizes a dataframe
+    Normalizes dataframe columns
 
     Parameters
     ----------
@@ -50,17 +54,29 @@ def normalize(df,max=None,min=None,mean=None,std=None):
     mean / std : float
         Mean and standard deviation for normalizing around the mean
 
+    reverse : bool
+        Reverse normalization
+
     Returns
     -------
     Dataframe or Series
         The normalized result
     '''
-    if mean!=None and std!=None:
-        return (df - mean)/std
-    elif min!=None and max!=None:
-        return (df - min) / (max - min)
+    if not reverse:
+        if mean!=None and std!=None:
+            return (df - mean)/std
+        elif min!=None and max!=None:
+            return (df - min) / (max - min)
+        else:
+            raise ValueError(f"Normalization type is not recognized. Require max/min or mean/std.")
     else:
-        raise ValueError(f"Normalization type is not recognized. Require max/min or mean/std.")
+        if mean!=None and std!=None:
+            return (df * std) + mean
+        elif min!=None and max!=None:
+            return (df * (max - min)) + min
+        else:
+            raise ValueError(f"Normalization type is not recognized. Require max/min or mean/std.")
+
 
 def __jday_convert(x):
     '''
@@ -273,6 +289,59 @@ def load_index_map(name='train', path=None, compressed=False):
 
     idx_pairs = pd.read_csv(store_path).to_numpy()
     return idx_pairs
+
+def build_xy(df, idx_pairs, x_idx=[0,1,2,3,4,5,6,7,8,16,17], y_idx=[9,10,11,12,13,14,15]):
+    '''
+    Builds an X (inputs e.g. X_train) and y (labels e.g. y_train) dataframes
+    by using the idx_pairs.  For example, idx_pairs of [[0,1]] will return a
+    single row which contains the values from df.iloc[0] and df.iloc[1] concat
+    and then split according to the x_idx and y_idx indexes into two df.
+
+    Parameters
+    ----------
+    df : Dataframe
+        Contains all the data to be trained on
+
+    idx_pairs : list
+        Contains list of lists where each list is a pair of indexes for df
+
+    x_idx : list
+        Contains the indexes that represent the X values.
+        Default: [0,1,2,3,4,5,6,7,8,16,17]
+
+    y_idx : list
+        Contains the indexes that represent the y values
+        Default: [9,10,11,12,13,14,15]
+
+    Returns
+    -------
+    DataFrame
+        Contains the input values X
+
+    DataFrame
+        Contains the label values y
+    '''
+    columns = df.columns
+    X_columns,y_columns = [],[]
+    for i in x_idx:
+        c = columns[i%len(columns)]
+        if c in X_columns:
+            X_columns.append(c+'_y')
+        else:
+            X_columns.append(c)
+    for i in y_idx:
+        c = columns[i%len(columns)]
+        if c in y_columns:
+            y_columns.append(c+'_y')
+        else:
+            y_columns.append(c)
+
+    combined = np.concatenate([df.to_numpy()[idx_pairs[:,0]],
+                               df.to_numpy()[idx_pairs[:,1]]], axis=1)
+
+    X = pd.DataFrame(combined[:,x_idx], columns=X_columns)
+    y = pd.DataFrame(combined[:,y_idx], columns=y_columns)
+    return X,y
 
 if __name__ == '__main__':
     import argparse
