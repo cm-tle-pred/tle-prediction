@@ -5,7 +5,56 @@ from datetime import datetime
 from tqdm import tqdm
 import os
 
+def normalize_all_columns(df):
+    '''
+    Normalizes a dataframe
+
+    Parameters
+    ----------
+    df : DataFrame or Series
+        gp_history dataframe to be normalized
+
+    Returns
+    -------
+    Dataframe or Series
+        The normalized result
+    '''
+    from_180_deg = ['INCLINATION']
+    from_360_deg = ['RA_OF_ASC_NODE', 'MEAN_ANOMALY', 'ARG_OF_PERICENTER']
+
+    df[from_180_deg] = normalize(df[from_180_deg],min=0,max=180)
+    df[from_360_deg] = normalize(df[from_360_deg],min=0,max=360)
+    df['MEAN_MOTION'] = normalize(df['MEAN_MOTION'],mean=13.75314,std=2.212779)
+    df['ECCENTRICITY'] = np.cbrt(df['ECCENTRICITY'])
+    df['BSTAR'] = df['BSTAR']*20
+
+    return df
+
+def reverse_normalize_all_columns():
+    raise NotImplementedError("For validation purposes")
+
+
 def normalize(df,max=None,min=None,mean=None,std=None):
+    '''
+    Normalizes a dataframe
+
+    Parameters
+    ----------
+    df : DataFrame or Series
+        All columns to be normalized using either min-max or around the mean
+        normalization.  Only one method can be applied.
+
+    min / max : float
+        Minimum and Maximum values for min-max normalization
+
+    mean / std : float
+        Mean and standard deviation for normalizing around the mean
+
+    Returns
+    -------
+    Dataframe or Series
+        The normalized result
+    '''
     if mean!=None and std!=None:
         return (df - mean)/std
     elif min!=None and max!=None:
@@ -13,7 +62,7 @@ def normalize(df,max=None,min=None,mean=None,std=None):
     else:
         raise ValueError(f"Normalization type is not recognized. Require max/min or mean/std.")
 
-def jday_convert(x):
+def __jday_convert(x):
     '''
     Algorithm from python-sgp4:
 
@@ -34,9 +83,19 @@ def add_epoch_data(df):
      epoch_jd - julian datetime
      epoch_fr - julian date offset
      epoch_days - Days since 1949 Dec 31
+
+     Parameters
+     ----------
+     df : DataFrame
+         Dataframe containing a column EPOCH as a datetime.
+
+     Returns
+     -------
+     Dataframe
+         Same dataframe with added columns
     '''
     # Get the Julian date of the EPOCH
-    df[['epoch_jd', 'epoch_fr']] = df['EPOCH'].apply(jday_convert).to_list()
+    df[['epoch_jd', 'epoch_fr']] = df['EPOCH'].apply(__jday_convert).to_list()
 
     # Get the days since 1949 December 31 00:00 UT
     # This will be used when creating satobj for the test set
@@ -48,6 +107,10 @@ def add_epoch_data(df):
     return df
 
 def add_satellite_position_data(df):
+    '''
+    '''
+    raise NotImplementedError("This is too slow for large dataframe")
+
     # Create the satellite object (used to find satellite position)
     df['satobj'] = df.apply(lambda x: Satrec.twoline2rv(x['TLE_LINE1'], x['TLE_LINE2']), axis=1)
 
@@ -84,6 +147,12 @@ def create_index_map(df, debug=False, write=False, name='train', path=None,
     compressed : bool
         Compress the output file into csv.gz files.  Default is False.
         NOTE: Compression takes a lot of extra time.
+
+    Returns
+    -------
+    list
+        List contains tuples of integers which are both index values from df
+        where both share the same NORAD ID
     '''
 
     def groups(lst):
@@ -185,6 +254,12 @@ def load_index_map(name='train', path=None, compressed=False):
 
     compressed : bool
         Use the file extention .csv.gz instead of .csv
+
+    Returns
+    -------
+    list
+        List contains tuples of integers which are both index values from df
+        where both share the same NORAD ID
     '''
     if compressed:
         file_name = name + '_idx_pairs.csv.gz'
