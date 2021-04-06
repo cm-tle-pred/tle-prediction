@@ -1,0 +1,11 @@
+model_0:
+----------
+  1 layer 300 nodes
+  L1 loss
+
+batchsize = 2000:
+ - GPU took about 5min per 1000 steps (1/27 of epoch)
+ - CPU (4 workers) 16s per 1000 steps
+ - CPU (8 workers) 11s per 1000 steps
+    - 1 epoch model took 309s with loss 31.7
+    - 10 epoch model took: 3151s with loss 32.1
