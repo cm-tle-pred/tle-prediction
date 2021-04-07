@@ -28,6 +28,10 @@ def normalize_all_columns(df, reverse=False):
     df[from_180_deg] = normalize(df[from_180_deg],min=0,max=180,reverse=reverse)
     df[from_360_deg] = normalize(df[from_360_deg],min=0,max=360,reverse=reverse)
     df['MEAN_MOTION'] = normalize(df['MEAN_MOTION'],mean=13.75314,std=2.212779,reverse=reverse)
+    try:
+        df['epoch_jd'] = normalize(df['epoch_jd'],min=2437162.5,max=2459309.5,reverse=reverse)
+    except:
+        pass
 
     if not reverse:
         df['ECCENTRICITY'] = np.cbrt(df['ECCENTRICITY'])
