@@ -33,37 +33,43 @@ def load_index_map():
 
 def train_model(df, idx_pairs, model_cols=None, hiddenSize=300, batchSize=2000,
                 learningRate=0.01, numEpochs=1, device='cpu', num_workers=0,
-                print_itr=1000, save_model=False):
+                print_itr=1000, save_model=False, activate=None, loss=None):
     torch.manual_seed(0)
 
-    device = torch.device(device)
+    pyt_device = torch.device(device)
 
     if model_cols is None:
         model_cols = ['MEAN_MOTION_DOT', 'MEAN_MOTION_DDOT', 'BSTAR', 'INCLINATION', 'RA_OF_ASC_NODE',
                       'ECCENTRICITY', 'ARG_OF_PERICENTER', 'MEAN_ANOMALY', 'MEAN_MOTION', 'epoch_jd', 'epoch_fr']
 
     print('>>> Loading model')
-    model = NNModel(len(model_cols) + 2, len(model_cols) - 2, hiddenSize)
-    to_device(model, device)
-    criterion = nn.L1Loss()
+    model = NNModel(inputSize=len(model_cols) + 2,
+                    outputSize=len(model_cols) - 2,
+                    hiddenSize=hiddenSize,
+                    activate=activate)
+
+    to_device(model, pyt_device)
+
+    if not loss or loss =='MAE' or loss == 'L1':
+        criterion = nn.L1Loss()
+    elif loss == 'MSE' or loss == 'L2':
+        criterion = nn.MSELoss()
+
     optimizer = torch.optim.Adam(model.parameters(), lr=learningRate)
 
     print('>>> Loading dataset')
-    trainDataset = Dataset(df[model_cols], idx_pairs, device)
+    trainDataset = Dataset(df[model_cols], idx_pairs, pyt_device)
     trainLoader = torch.utils.data.DataLoader(dataset=trainDataset,
                                               batch_size=batchSize,
                                               shuffle=True,
                                               num_workers=num_workers,
                                              )
 
-    # # Test deleting the variable from memory...
-    # del df
-    # gc.collect()
-
     print('>>> Beginning training!')
     ts = time()
     for epoch in range(numEpochs):
         for i, (inputs, labels) in enumerate(trainLoader):
+
             optimizer.zero_grad()
             # Forward propagation
             outputs = model(inputs)
@@ -74,12 +80,14 @@ def train_model(df, idx_pairs, model_cols=None, hiddenSize=300, batchSize=2000,
             optimizer.step()
             # Logging
             if (i+1) % print_itr == 0:
-                print('Epoch [{}/{}], Step [{}/{}], Loss: {}, Time: {}s'.format(epoch+1,
+                print('Epoch [{}/{}], Batch [{}/{}], Loss: {}, Time: {}s'.format(epoch+1,
                       numEpochs, i+1,
                       len(trainDataset)//batchSize,
                       loss,
                       round(time()-ts)))
                 ts = time()
+
+    print (f'Final loss: {loss}')
 
     model.eval()
     if save_model:
@@ -89,8 +97,15 @@ def train_model(df, idx_pairs, model_cols=None, hiddenSize=300, batchSize=2000,
     return model
 
 def predict(model, X, device='cpu'):
-    X_tensor = to_device(torch.from_numpy(X.to_numpy()).float(), device)
-    nn_results = model(X_tensor).detach().cpu().numpy()
+    pyt_device = torch.device(device)
+
+    if 'cuda' in device:
+        X_tensor = to_device(torch.from_numpy(X.to_numpy()).float(), pyt_device)
+        nn_results = model(X_tensor).detach().cpu().numpy()
+    else:
+        X_tensor = torch.from_numpy(X.to_numpy()).float()
+        nn_results = model(X_tensor).detach().numpy()
+
     return nn_results
 
 if __name__ == '__main__':
