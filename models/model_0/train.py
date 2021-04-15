@@ -63,6 +63,7 @@ def train_model(df, idx_pairs, model_cols=None, hiddenSize=300, batchSize=2000,
                                               batch_size=batchSize,
                                               shuffle=True,
                                               num_workers=num_workers,
+                                              #pin_memory=True
                                              )
 
     print('>>> Beginning training!')
