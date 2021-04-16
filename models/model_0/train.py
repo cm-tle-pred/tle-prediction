@@ -80,7 +80,7 @@ def train_model(df, idx_pairs, model_cols=None, hiddenSize=300, batchSize=2000,
             # Gradient descent
             optimizer.step()
             # Logging
-            if (i+1) % print_itr == 0:
+            if print_itr > 0 and (i+1) % print_itr == 0:
                 print('Epoch [{}/{}], Batch [{}/{}], Loss: {}, Time: {}s'.format(epoch+1,
                       numEpochs, i+1,
                       len(trainDataset)//batchSize,
