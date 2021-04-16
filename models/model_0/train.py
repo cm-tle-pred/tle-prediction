@@ -4,7 +4,7 @@ import clean_data
 import torch
 import torch.nn as nn
 from dataset import Dataset, to_device
-from model import NNModel
+from model import NNModel, NNModelEx
 from time import time
 # import gc
 
@@ -33,7 +33,8 @@ def load_index_map():
 
 def train_model(df, idx_pairs, model_cols=None, hiddenSize=300, batchSize=2000,
                 learningRate=0.01, numEpochs=1, device='cpu', num_workers=0,
-                print_itr=1000, save_model=False, activate=None, loss=None):
+                print_itr=1000, save_model=False, activate=None, loss=None,
+                exmodel=False, **kwargs):
     torch.manual_seed(0)
 
     pyt_device = torch.device(device)
@@ -42,11 +43,17 @@ def train_model(df, idx_pairs, model_cols=None, hiddenSize=300, batchSize=2000,
         model_cols = ['MEAN_MOTION_DOT', 'MEAN_MOTION_DDOT', 'BSTAR', 'INCLINATION', 'RA_OF_ASC_NODE',
                       'ECCENTRICITY', 'ARG_OF_PERICENTER', 'MEAN_ANOMALY', 'MEAN_MOTION', 'epoch_jd', 'epoch_fr']
 
-    print('>>> Loading model')
-    model = NNModel(inputSize=len(model_cols) + 2,
-                    outputSize=len(model_cols) - 2,
-                    hiddenSize=hiddenSize,
-                    activate=activate)
+    if not exmodel:
+        print('>>> Loading simple model')
+        model = NNModel(inputSize=len(model_cols) + 2,
+                        outputSize=len(model_cols) - 2,
+                        hiddenSize=hiddenSize,
+                        activate=activate)
+    else:
+        print('>>> Loading extended model')
+        model = NNModelEx(inputSize=len(model_cols) + 2,
+                          outputSize=len(model_cols) - 2,
+                          **kwargs)
 
     to_device(model, pyt_device)
 
