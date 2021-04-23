@@ -77,11 +77,11 @@ def __load_task(norad_lists, file_path):
     '''
     Concurrent/Multiprocessing supported task that loads a csv.gz file
     '''
-    necessary_columns = ['NORAD_CAT_ID','OBJECT_TYPE','OBJECT_NAME','TLE_LINE1',
+    necessary_columns = ['NORAD_CAT_ID','OBJECT_TYPE','TLE_LINE1',
                          'TLE_LINE2','MEAN_MOTION_DOT', 'MEAN_MOTION_DDOT',
                          'BSTAR', 'INCLINATION', 'RA_OF_ASC_NODE',
                          'ECCENTRICITY', 'ARG_OF_PERICENTER', 'MEAN_ANOMALY',
-                         'MEAN_MOTION', 'EPOCH']
+                         'MEAN_MOTION', 'REV_AT_EPOCH', 'EPOCH', 'GP_ID']
     df_dict = {}
     for data_type in norad_lists.keys():
         df_dict[data_type] = []
