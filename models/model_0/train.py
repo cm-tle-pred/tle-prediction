@@ -31,10 +31,20 @@ def load_index_map():
     idx_pairs = clean_data.load_index_map()
     return idx_pairs
 
+def create_model(model_cols=None, **kwargs):
+    if model_cols is None:
+        model_cols = ['MEAN_MOTION_DOT', 'MEAN_MOTION_DDOT', 'BSTAR', 'INCLINATION', 'RA_OF_ASC_NODE',
+                      'ECCENTRICITY', 'ARG_OF_PERICENTER', 'MEAN_ANOMALY', 'MEAN_MOTION', 'epoch_jd', 'epoch_fr']
+
+    model = NNModelEx(inputSize=len(model_cols) + 2,
+                      outputSize=len(model_cols) - 2,
+                      **kwargs)
+    return model
+
 def train_model(df, idx_pairs, model_cols=None, hiddenSize=300, batchSize=2000,
                 learningRate=0.01, numEpochs=1, device='cpu', num_workers=0,
                 print_itr=1000, save_model=False, activate=None, loss=None,
-                exmodel=False, **kwargs):
+                model=None, loss_data_points=50, **kwargs):
     torch.manual_seed(0)
 
     pyt_device = torch.device(device)
@@ -43,17 +53,12 @@ def train_model(df, idx_pairs, model_cols=None, hiddenSize=300, batchSize=2000,
         model_cols = ['MEAN_MOTION_DOT', 'MEAN_MOTION_DDOT', 'BSTAR', 'INCLINATION', 'RA_OF_ASC_NODE',
                       'ECCENTRICITY', 'ARG_OF_PERICENTER', 'MEAN_ANOMALY', 'MEAN_MOTION', 'epoch_jd', 'epoch_fr']
 
-    if not exmodel:
+    if not model:
         print('>>> Loading simple model')
         model = NNModel(inputSize=len(model_cols) + 2,
                         outputSize=len(model_cols) - 2,
                         hiddenSize=hiddenSize,
                         activate=activate)
-    else:
-        print('>>> Loading extended model')
-        model = NNModelEx(inputSize=len(model_cols) + 2,
-                          outputSize=len(model_cols) - 2,
-                          **kwargs)
 
     to_device(model, pyt_device)
 
@@ -73,8 +78,19 @@ def train_model(df, idx_pairs, model_cols=None, hiddenSize=300, batchSize=2000,
                                               #pin_memory=True
                                              )
 
+    # Determine loss output
+    if loss_data_points > 0:
+        loss_itr = len(idx_pairs) / batchSize * numEpochs // loss_data_points
+        if loss_itr <= 0:
+            loss_itr=1
+        elif loss_itr > len(idx_pairs) / 200:
+            loss_itr = len(idx_pairs) / 200
+    loss_out = []
+
     print('>>> Beginning training!')
+    numBatches = len(trainDataset)//batchSize
     ts = time()
+    lt = time()
     for epoch in range(numEpochs):
         for i, (inputs, labels) in enumerate(trainLoader):
 
@@ -90,10 +106,19 @@ def train_model(df, idx_pairs, model_cols=None, hiddenSize=300, batchSize=2000,
             if print_itr > 0 and (i+1) % print_itr == 0:
                 print('Epoch [{}/{}], Batch [{}/{}], Loss: {}, Time: {}s'.format(epoch+1,
                       numEpochs, i+1,
-                      len(trainDataset)//batchSize,
+                      numBatches,
                       loss,
                       round(time()-ts)))
                 ts = time()
+            if loss_data_points > 0 and (i+1) % loss_itr == 0:
+                loss_out.append(dict(batch=i+1,
+                                     numBatches=numBatches,
+                                     epoch=epoch+1,
+                                     numEpochs=numEpochs,
+                                     loss=loss,
+                                     time=round(time()-lt)))
+                lt = time()
+
 
     print (f'Final loss: {loss}')
 
@@ -102,7 +127,7 @@ def train_model(df, idx_pairs, model_cols=None, hiddenSize=300, batchSize=2000,
         torch.save(model.state_dict(), 'model_0.pth')
         print('Model saved as model_0.pth')
 
-    return model
+    return model, loss_out
 
 def predict(model, X, device='cpu'):
     pyt_device = torch.device(device)
