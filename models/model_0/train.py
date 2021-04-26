@@ -83,8 +83,8 @@ def train_model(df, idx_pairs, model_cols=None, hiddenSize=300, batchSize=2000,
         loss_itr = len(idx_pairs) / batchSize * numEpochs // loss_data_points
         if loss_itr <= 0:
             loss_itr=1
-        elif loss_itr > len(idx_pairs) / 200:
-            loss_itr = len(idx_pairs) / 200
+        elif loss_itr > len(idx_pairs) // batchSize:
+            loss_itr = len(idx_pairs) // batchSize
     loss_out = []
 
     print('>>> Beginning training!')
