@@ -12,11 +12,11 @@ class NNModel(nn.Module):
         hidden = self.activate(self.layer1(X))
         return self.layer2(hidden)
 
-    
+
 class NNModelEx(nn.Module):
     def __init__(self, inputSize, outputSize, **kwargs):
         super().__init__()
-        
+
         network = []
         p = inputSize
         for k,v in kwargs.items():
@@ -31,9 +31,10 @@ class NNModelEx(nn.Module):
                 network.append(nn.Sigmoid())
             elif k.startswith('r'):
                 network.append(nn.ReLU())
-         
+
         network.append(nn.Linear(in_features=p, out_features=outputSize))
-        
+        network.append(nn.ReLU())
+
         self.net = nn.Sequential(*network)
 
     def forward(self, X):
