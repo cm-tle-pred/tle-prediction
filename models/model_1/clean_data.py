@@ -32,21 +32,62 @@ def normalize_all_columns(df, reverse=False):
     df['MEAN_MOTION'] = normalize(df['MEAN_MOTION'],min=11.25,max=17,reverse=reverse)
     
     try:
-        df['epoch_jd'] = normalize(df['epoch_jd'],min=2437162.5,max=2459309.5,reverse=reverse)
+        # NOTE: Date fields & B* will not be reversed
+        df['year'] = normalize(df.EPOCH.dt.year,min=1990,max=2021,reverse=False)
+        df['month_sin'] = np.sin((df.EPOCH.dt.month-1)*(2.*np.pi/12))
+        df['month_cos'] = np.cos((df.EPOCH.dt.month-1)*(2.*np.pi/12))
+        df['hour_sin'] = np.sin(df.EPOCH.dt.hour*(2.*np.pi/24))
+        df['hour_cos'] = np.cos(df.EPOCH.dt.hour*(2.*np.pi/24))
+        df['minute_sin'] = np.sin(df.EPOCH.dt.minute*(2.*np.pi/60))
+        df['minute_cos'] = np.cos(df.EPOCH.dt.minute*(2.*np.pi/60))
+        df['second_sin'] = np.sin(df.EPOCH.dt.second*(2.*np.pi/60))
+        df['second_cos'] = np.cos(df.EPOCH.dt.second*(2.*np.pi/60))
+        df['ms_sin'] = np.sin(df.EPOCH.dt.microsecond*(2.*np.pi/1000000))
+        df['ms_cos'] = np.cos(df.EPOCH.dt.microsecond*(2.*np.pi/1000000))
+        df.BSTAR.clip(-1,1,inplace=True)
     except:
-        pass
-    
-    try:
-        if not reverse:
-            df['BSTAR'] = df['BSTAR']*20
-        else:
-            df['BSTAR'] = df['BSTAR']/20
-    except:
-        pass
+        raise Exception('Failed to normalize')
 
     return df
 
-def normalize(df,max=None,min=None,mean=None,std=None,reverse=False):
+def normalize_epoch_diff(df, drop_epoch=False):
+    '''
+    Normalizes the differences in epoch.  Assumes columns EPOCH and EPOCH_y exist.
+    Adds the following columns:
+     epoch_day_diff - number of days the two epochs normalized between -1 and 1
+     epoch_sec_diff - number of seconds within day diff normalized between 0 and 1
+     epoch_ms_diff - number of microseconds within second diff normalized between 0 and 1
+
+    Parameters
+    ----------
+    df : DataFrame or Series
+        gp_history dataframe to be normalized
+
+    drop_epoch : bool
+        In True, columns EPOCH and EPOCH_y will be dropped from result. Default is False.
+
+    Returns
+    -------
+    Dataframe or Series
+        The normalized result
+    '''
+    min_date = '1990-01-01'
+    max_date = '2021-04-05'
+    sec = 86400
+    mss = 1000000
+    day_range = (datetime.strptime(max_date, '%Y-%m-%d') - datetime.strptime(min_date, '%Y-%m-%d')).days
+    diff = df.EPOCH-df.EPOCH_y
+    
+    df['epoch_day_diff'] = normalize(diff.dt.days, min=-day_range, max=day_range, range=[-1,1])
+    df['epoch_sec_diff'] = normalize(diff.dt.seconds, min=0, max=sec)
+    df['epoch_ms_diff'] = normalize(diff.dt.microseconds, min=0, max=mss)
+    
+    if drop_epoch:
+        df.drop(['EPOCH', 'EPOCH_y'], axis=1, inplace=True)
+        
+    return df
+
+def normalize(df,max=None,min=None,mean=None,std=None,range=[0,1],reverse=False):
     '''
     Normalizes dataframe columns
 
@@ -58,6 +99,9 @@ def normalize(df,max=None,min=None,mean=None,std=None,reverse=False):
 
     min / max : float
         Minimum and Maximum values for min-max normalization
+        
+    range : list
+        The lower and upper bounds of min-max normalization
 
     mean / std : float
         Mean and standard deviation for normalizing around the mean
@@ -74,14 +118,24 @@ def normalize(df,max=None,min=None,mean=None,std=None,reverse=False):
         if mean!=None and std!=None:
             return (df - mean)/std
         elif min!=None and max!=None:
-            return (df - min) / (max - min)
+            if range == [0,1]:
+                return (df - min) / (max - min)
+            else:
+                b = range[1]
+                a = range[0]
+                return (b-a) * (df - min) / (max - min) + a
         else:
             raise ValueError(f"Normalization type is not recognized. Require max/min or mean/std.")
     else:
         if mean!=None and std!=None:
             return (df * std) + mean
         elif min!=None and max!=None:
-            return (df * (max - min)) + min
+            if range == [0,1]:
+                return (df * (max - min)) + min
+            else:
+                b = range[1]
+                a = range[0]
+                return ((df-a)/(b-a) * (max - min)) + min
         else:
             raise ValueError(f"Normalization type is not recognized. Require max/min or mean/std.")
 
@@ -326,7 +380,10 @@ def load_index_map(name='train', path=None, compressed=False):
     idx_pairs = pd.read_csv(store_path).to_numpy()
     return idx_pairs
 
-def build_xy(df, idx_pairs, x_idx=[0,1,2,3,4,5,6,7,8,16,17], y_idx=[9,10,11,12,13,14,15]):
+def build_xy(df, idx_pairs,
+             x_idx=[0,1,2,3,4,5,6,9,10,11,12,13,14,15,16,17,18,19,29,30,31,32,33,34,35,36,37,38,39,8,28],
+             y_idx=[21,22,23,24,25,26],
+             debug=False):
     '''
     Builds an X (inputs e.g. X_train) and y (labels e.g. y_train) dataframes
     by using the idx_pairs.  For example, idx_pairs of [[0,1]] will return a
@@ -339,15 +396,18 @@ def build_xy(df, idx_pairs, x_idx=[0,1,2,3,4,5,6,7,8,16,17], y_idx=[9,10,11,12,1
         Contains all the data to be trained on
 
     idx_pairs : list
-        Contains list of lists where each list is a pair of indexes for df
+        Contains list of lists where each list is a pair of row indexes for df
 
     x_idx : list
-        Contains the indexes that represent the X values.
-        Default: [0,1,2,3,4,5,6,7,8,16,17]
+        Contains the column indexes that represent the X values.
+        Default: [0,1,2,3,4,5,6,9,10,11,12,13,14,15,16,17,18,19,29,30,31,32,33,34,35,36,37,38,39,8,28]
 
     y_idx : list
-        Contains the indexes that represent the y values
-        Default: [9,10,11,12,13,14,15]
+        Contains the column indexes that represent the y values
+        Default: [21,22,23,24,25,26]
+        
+    debug : bool
+        Display the column indexes only.
 
     Returns
     -------
@@ -357,6 +417,11 @@ def build_xy(df, idx_pairs, x_idx=[0,1,2,3,4,5,6,7,8,16,17], y_idx=[9,10,11,12,1
     DataFrame
         Contains the label values y
     '''
+    if debug:
+        display ({i:c for i,c in enumerate(df.columns)})
+        display ({i+len(df.columns):c for i,c in enumerate(df.columns)})
+        return None
+    
     columns = df.columns
     X_columns,y_columns = [],[]
     for i in x_idx:
@@ -376,7 +441,11 @@ def build_xy(df, idx_pairs, x_idx=[0,1,2,3,4,5,6,7,8,16,17], y_idx=[9,10,11,12,1
                                df.to_numpy()[idx_pairs[:,1]]], axis=1)
 
     X = pd.DataFrame(combined[:,x_idx], columns=X_columns)
-    y = pd.DataFrame(combined[:,y_idx], columns=y_columns)
+    y = pd.DataFrame(combined[:,y_idx], columns=y_columns).apply(pd.to_numeric)
+    
+    num_cols = list(set(X.columns).difference({'EPOCH','EPOCH_y'}))
+    X[num_cols] = X[num_cols].apply(pd.to_numeric)
+    
     return X,y
 
 if __name__ == '__main__':
