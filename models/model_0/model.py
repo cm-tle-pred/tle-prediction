@@ -33,7 +33,7 @@ class NNModelEx(nn.Module):
                 network.append(nn.ReLU())
 
         network.append(nn.Linear(in_features=p, out_features=outputSize))
-        network.append(nn.ReLU())
+        #network.append(nn.ReLU())
 
         self.net = nn.Sequential(*network)
 
