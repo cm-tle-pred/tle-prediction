@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from sgp4.api import Satrec, WGS72
 from datetime import datetime
-from tqdm import tqdm
+from tqdm import tqdm_notebook as tqdm
 import os
 import concurrent.futures
 
@@ -30,7 +30,7 @@ def normalize_all_columns(df, reverse=False):
     df[from_360_deg] = normalize(df[from_360_deg],min=0,max=360,reverse=reverse)
     df['ECCENTRICITY'] = normalize(df['ECCENTRICITY'],min=0,max=0.25,reverse=reverse)
     df['MEAN_MOTION'] = normalize(df['MEAN_MOTION'],min=11.25,max=17,reverse=reverse)
-    
+
     try:
         # NOTE: Date fields & B* will not be reversed
         df['year'] = normalize(df.EPOCH.dt.year,min=1990,max=2021,reverse=False)
@@ -46,7 +46,7 @@ def normalize_all_columns(df, reverse=False):
         df['ms_cos'] = np.cos(df.EPOCH.dt.microsecond*(2.*np.pi/1000000))
         df.BSTAR.clip(-1,1,inplace=True)
     except:
-        raise Exception('Failed to normalize')
+        pass
 
     return df
 
@@ -77,14 +77,14 @@ def normalize_epoch_diff(df, drop_epoch=False):
     mss = 1000000
     day_range = (datetime.strptime(max_date, '%Y-%m-%d') - datetime.strptime(min_date, '%Y-%m-%d')).days
     diff = df.EPOCH-df.EPOCH_y
-    
+
     df['epoch_day_diff'] = normalize(diff.dt.days, min=-day_range, max=day_range, range=[-1,1])
     df['epoch_sec_diff'] = normalize(diff.dt.seconds, min=0, max=sec)
     df['epoch_ms_diff'] = normalize(diff.dt.microseconds, min=0, max=mss)
-    
+
     if drop_epoch:
         df.drop(['EPOCH', 'EPOCH_y'], axis=1, inplace=True)
-        
+
     return df
 
 def normalize(df,max=None,min=None,mean=None,std=None,range=[0,1],reverse=False):
@@ -99,7 +99,7 @@ def normalize(df,max=None,min=None,mean=None,std=None,range=[0,1],reverse=False)
 
     min / max : float
         Minimum and Maximum values for min-max normalization
-        
+
     range : list
         The lower and upper bounds of min-max normalization
 
@@ -196,6 +196,50 @@ def add_satellite_position_data(df):
     df['satpos'] = df.apply(lambda x: np.array(x['satobj'].sgp4(x['epoch_jd'], x['epoch_fr'])[1]), axis=1)
     return df
 
+def get_satellite_xyz(bst, ecc, aop, inc, mea, mem, raa, mmdot=0, mmddot=0, norad=0, epoch=None):
+    '''
+    Get cartesian coordinates of a satellite based on TLE parameters
+
+     Parameters
+     ----------
+     bst : float : B-star
+     ecc : float : eccentricity (in degrees)
+     aop : float : argument of perigee (in degrees)
+     inc : float : inclination (in degrees)
+     mea : float : mean anomaly (in degrees)
+     mem : float : mean motion (in degrees per minute)
+     raa : float : right ascension of ascending node (in degrees)
+     mmdot : float : NOT USED - ballistic coefficient
+     mmddot : float : NOT USED - mean motion 2nd derivative
+     norad : int : NOT USED - NORAD ID
+     epoch : Timestamp : moment in time to get position
+
+     Returns
+     -------
+     list
+         [x, y, z] of satellite position in kilometers from earth geocenter
+    '''
+
+    r = datetime.strptime('12/31/1949 00:00:00', '%m/%d/%Y %H:%M:%S')
+    epoch_days = (epoch-r)/np.timedelta64(1, 'D')
+    s = Satrec()
+    s.sgp4init(
+         WGS72,           # gravity model
+         'i',             # 'a' = old AFSPC mode, 'i' = improved mode
+         norad,               # satnum: Satellite number
+         epoch_days,       # epoch: days since 1949 December 31 00:00 UT
+         bst,      # bstar: drag coefficient (/earth radii)
+         mmdot,   # ndot (NOT USED): ballistic coefficient (revs/day)
+         mmddot,             # nddot (NOT USED): mean motion 2nd derivative (revs/day^3)
+         ecc,       # ecco: eccentricity
+         aop*np.pi/180, # argpo: argument of perigee (radians)
+         inc*np.pi/180, # inclo: inclination (radians)
+         mea*np.pi/180, # mo: mean anomaly (radians)
+         mem*np.pi/(4*180), # no_kozai: mean motion (radians/minute)
+         raa*np.pi/180, # nodeo: right ascension of ascending node (radians)
+    )
+    return np.array(s.sgp4(*__jday_convert(epoch))[1])
+
 def __map_index(df, norads):
     def groups(lst):
         arr = lst.copy()
@@ -217,10 +261,9 @@ def __map_index(df, norads):
         if len(norad_idxs > 1):
             idx_pairs.extend(groups(norad_idxs))
     return idx_pairs
-                
+
 def create_index_map(df, debug=False, write=False, name='train', path=None,
-                     compressed=False, threaded=False, multiproc=False,
-                     batch_size=20):
+                     compressed=False, threaded=False, batch_size=20):
     '''
     This will create a map between an input record (for X_train) and a label
     record (for y_train) that will be used by the pytorch dataset class to
@@ -251,7 +294,7 @@ def create_index_map(df, debug=False, write=False, name='train', path=None,
 
     threaded : bool
         Use multiple threads.  Default is False.
-        
+
     batch_size : int
         Size of batch when multithreading.  Default is 20.
 
@@ -405,7 +448,7 @@ def build_xy(df, idx_pairs,
     y_idx : list
         Contains the column indexes that represent the y values
         Default: [21,22,23,24,25,26]
-        
+
     debug : bool
         Display the column indexes only.
 
@@ -421,7 +464,7 @@ def build_xy(df, idx_pairs,
         display ({i:c for i,c in enumerate(df.columns)})
         display ({i+len(df.columns):c for i,c in enumerate(df.columns)})
         return None
-    
+
     columns = df.columns
     X_columns,y_columns = [],[]
     for i in x_idx:
@@ -442,10 +485,10 @@ def build_xy(df, idx_pairs,
 
     X = pd.DataFrame(combined[:,x_idx], columns=X_columns)
     y = pd.DataFrame(combined[:,y_idx], columns=y_columns).apply(pd.to_numeric)
-    
+
     num_cols = list(set(X.columns).difference({'EPOCH','EPOCH_y'}))
     X[num_cols] = X[num_cols].apply(pd.to_numeric)
-    
+
     return X,y
 
 if __name__ == '__main__':
