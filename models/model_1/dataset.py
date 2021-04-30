@@ -12,6 +12,8 @@ class Dataset(torch.utils.data.Dataset):
         'Initialization'
         self.X = torch.from_numpy(X.to_numpy()).float()
         self.y = torch.from_numpy(y.to_numpy()).float()
+        self.num_X = X.shape[1]
+        self.num_y = y.shape[1]
 
     def __len__(self):
         'Denotes the total number of samples'
