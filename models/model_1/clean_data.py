@@ -29,7 +29,12 @@ def normalize_all_columns(df, reverse=False):
     df[from_180_deg] = normalize(df[from_180_deg],min=0,max=180,reverse=reverse)
     df[from_360_deg] = normalize(df[from_360_deg],min=0,max=360,reverse=reverse)
     df['ECCENTRICITY'] = normalize(df['ECCENTRICITY'],min=0,max=0.25,reverse=reverse)
-    df['MEAN_MOTION'] = normalize(df['MEAN_MOTION'],min=11.25,max=17,reverse=reverse)
+    df['MEAN_MOTION'] = normalize(df['MEAN_MOTION'],min=11.25,max=20,reverse=reverse)
+    df['SUNSPOTS_1D'] = normalize(df['SUNSPOTS_1D'],min=0,max=500,reverse=reverse)
+    df['SUNSPOTS_1D'] = normalize(df['SUNSPOTS_1D'],min=0,max=500,reverse=reverse)
+    df['SUNSPOTS_3D'] = normalize(df['SUNSPOTS_3D'],min=0,max=500,reverse=reverse)
+    df['SUNSPOTS_7D'] = normalize(df['SUNSPOTS_7D'],min=0,max=500,reverse=reverse)
+    df['AIR_MONTH_AVG_TEMP'] = normalize(df['AIR_MONTH_AVG_TEMP'], min=-day_range, max=day_range, range=[-1,1])
 
     try:
         # NOTE: Date fields & B* will not be reversed
@@ -46,6 +51,7 @@ def normalize_all_columns(df, reverse=False):
         df['ms_cos'] = np.cos(df.EPOCH.dt.microsecond*(2.*np.pi/1000000))
         df.BSTAR.clip(-1,1,inplace=True)
     except:
+        print("Warning: Ignoring date and bstar columns.")
         pass
 
     return df
@@ -316,7 +322,7 @@ def create_index_map(df, debug=False, write=False, name='train', path=None,
     if threaded:
         batches = [norads[i:i+batch_size] for i in range(0, len(norads), batch_size)]
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            with tqdm(total=len(norads)) as pbar:
+            with tqdm(total=len(norads), desc='Creating index map (threaded)') as pbar:
                 tasks = []
                 for norad_batch in batches:
                     t = executor.submit(__map_index, df, norad_batch)
@@ -325,7 +331,7 @@ def create_index_map(df, debug=False, write=False, name='train', path=None,
                 for t in concurrent.futures.as_completed(tasks):
                     idx_pairs.extend(t.result())
     else:
-        for norad in tqdm(norads):
+        for norad in tqdm(norads, desc='Creating index map'):
             pairs = __map_index(df, [norad])
             idx_pairs.extend(pairs)
     idx_pairs = np.array(idx_pairs)
@@ -424,8 +430,8 @@ def load_index_map(name='train', path=None, compressed=False):
     return idx_pairs
 
 def build_xy(df, idx_pairs,
-             x_idx=[0,1,2,3,4,5,6,9,10,11,12,13,14,15,16,17,18,19,29,30,31,32,33,34,35,36,37,38,39,8,28],
-             y_idx=[21,22,23,24,25,26],
+             x_idx=[0,1,2,3,4,5,6,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,39,40,41,42,43,44,45,46,47,48,49,8,33],
+             y_idx=[26,27,28,29,30,31],
              debug=False):
     '''
     Builds an X (inputs e.g. X_train) and y (labels e.g. y_train) dataframes
@@ -443,11 +449,13 @@ def build_xy(df, idx_pairs,
 
     x_idx : list
         Contains the column indexes that represent the X values.
-        Default: [0,1,2,3,4,5,6,9,10,11,12,13,14,15,16,17,18,19,29,30,31,32,33,34,35,36,37,38,39,8,28]
+        Default: [0,1,2,3,4,5,6,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,
+                  39,40,41,42,43,44,45,46,47,48,49,
+                  8,33]
 
     y_idx : list
         Contains the column indexes that represent the y values
-        Default: [21,22,23,24,25,26]
+        Default: [26,27,28,29,30,31]
 
     debug : bool
         Display the column indexes only.
