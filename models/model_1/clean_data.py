@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from sgp4.api import Satrec, WGS72
 from datetime import datetime
-from tqdm import tqdm_notebook as tqdm
+from tqdm.notebook import tqdm
 import os
 import concurrent.futures
 
@@ -427,7 +427,7 @@ def load_index_map(name='train', path=None, compressed=False):
     idx_pairs = pd.read_csv(store_path).to_numpy()
     return idx_pairs
 
-def build_xy(df, idx_pairs,
+def build_xy(df, idx_map,
              x_idx=[0,1,2,3,4,5,6,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,39,40,41,42,43,44,45,46,47,48,49,8,33],
              y_idx=[26,27,28,29,30,31],
              debug=False):
@@ -442,7 +442,7 @@ def build_xy(df, idx_pairs,
     df : Dataframe
         Contains all the data to be trained on
 
-    idx_pairs : list
+    idx_map : list
         Contains list of lists where each list is a pair of row indexes for df
 
     x_idx : list
@@ -471,30 +471,14 @@ def build_xy(df, idx_pairs,
         display ({i:c for i,c in enumerate(df.columns)})
         display ({i+len(df.columns):c for i,c in enumerate(df.columns)})
         return None
-
-    columns = df.columns
-    X_columns,y_columns = [],[]
-    for i in x_idx:
-        c = columns[i%len(columns)]
-        if c in X_columns:
-            X_columns.append(c+'_y')
-        else:
-            X_columns.append(c)
-    for i in y_idx:
-        c = columns[i%len(columns)]
-        if c in y_columns:
-            y_columns.append(c+'_y')
-        else:
-            y_columns.append(c)
-
-    combined = np.concatenate([df.to_numpy()[idx_pairs[:,0]],
-                               df.to_numpy()[idx_pairs[:,1]]], axis=1)
-
-    X = pd.DataFrame(combined[:,x_idx], columns=X_columns)
-    y = pd.DataFrame(combined[:,y_idx], columns=y_columns).apply(pd.to_numeric)
-
-    num_cols = list(set(X.columns).difference({'EPOCH','EPOCH_y'}))
-    X[num_cols] = X[num_cols].apply(pd.to_numeric)
+    
+    new_df = pd.merge(df.iloc[idx_map[:,0]].reset_index(drop=True),
+                      df.iloc[idx_map[:,1]].reset_index(drop=True),
+                      left_index=True, right_index=True)
+    X = new_df[list(new_df.columns[x_idx])]
+    y = new_df[list(new_df.columns[y_idx])]
+    X.columns = [col[:-2] if col[-2:] == '_x' else col for col in X.columns]
+    y.columns = [col[:-2] if col[-2:] == '_y' else col for col in y.columns]
 
     return X,y
 
