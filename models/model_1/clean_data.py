@@ -31,10 +31,8 @@ def normalize_all_columns(df, reverse=False):
     df['ECCENTRICITY'] = normalize(df['ECCENTRICITY'],min=0,max=0.25,reverse=reverse)
     df['MEAN_MOTION'] = normalize(df['MEAN_MOTION'],min=11.25,max=20,reverse=reverse)
     df['SUNSPOTS_1D'] = normalize(df['SUNSPOTS_1D'],min=0,max=500,reverse=reverse)
-    df['SUNSPOTS_1D'] = normalize(df['SUNSPOTS_1D'],min=0,max=500,reverse=reverse)
     df['SUNSPOTS_3D'] = normalize(df['SUNSPOTS_3D'],min=0,max=500,reverse=reverse)
     df['SUNSPOTS_7D'] = normalize(df['SUNSPOTS_7D'],min=0,max=500,reverse=reverse)
-    df['AIR_MONTH_AVG_TEMP'] = normalize(df['AIR_MONTH_AVG_TEMP'], min=-day_range, max=day_range, range=[-1,1])
 
     try:
         # NOTE: Date fields & B* will not be reversed
@@ -468,6 +466,7 @@ def build_xy(df, idx_pairs,
     DataFrame
         Contains the label values y
     '''
+    
     if debug:
         display ({i:c for i,c in enumerate(df.columns)})
         display ({i+len(df.columns):c for i,c in enumerate(df.columns)})
