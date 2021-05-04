@@ -29,7 +29,8 @@ def load_model_with_config(config, training_set=None, force_train=False):
         print("New model created")
         net = NNModelEx(inputSize=training_set.num_X, outputSize=training_set.num_y, **config['model_definition'])
         loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
-        #optimizer = torch.optim.Adam(net.parameters(), lr=config['lr'], weight_decay=config['weight_decay'])
+#         loss_func = torch.nn.L1Loss()
+#         optimizer = torch.optim.Adam(net.parameters(), lr=config['lr'], weight_decay=config['weight_decay'])
         optimizer = torch.optim.SGD(net.parameters(), lr=config['lr'], momentum=config['momentum'])
         mean_losses = []
         next_epoch = 0
@@ -120,88 +121,6 @@ def create_model(in_size, out_size, **kwargs):
                       outputSize=out_size,
                       **kwargs)
     return model
-
-def train_mode_old(X, y, model, device='cpu', batch_size=2000, learning_rate=0.01,
-                momentum=0.9, num_epochs=1, loss=None, num_workers=0,
-                loss_data_points=50, save_model=False,):
-    torch.manual_seed(0)
-
-    pyt_device = torch.device(device)
-
-    to_device(model, pyt_device)
-
-    if not loss or loss =='MAE' or loss == 'L1':
-        criterion = nn.L1Loss()
-    elif loss == 'MSE' or loss == 'L2':
-        criterion = nn.MSELoss()
-
-    print(f'batch_size={batch_size} learning_rate={learning_rate}')
-    #optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=momentum)
-
-    print('>>> Loading dataset')
-    trainDataset = Dataset(X, y)
-    trainLoader = torch.utils.data.DataLoader(dataset=trainDataset,
-                                              batch_size=batch_size,
-                                              shuffle=True,
-                                              num_workers=num_workers,
-                                              pin_memory=True
-                                             )
-
-    # Determine loss output
-    if loss_data_points > 0:
-        loss_itr = len(X) / batch_size * num_epochs // loss_data_points
-        if loss_itr <= 0:
-            loss_itr=1
-        elif loss_itr > len(X) // batch_size:
-            loss_itr = len(X) // batch_size
-    loss_out = []
-
-    print('>>> Beginning training!')
-    epbar = tqdm(range(num_epochs))
-    num_batches = len(trainDataset)//batch_size
-    ts = time()
-    lt = time()
-    for epoch in epbar:
-        epbar.set_description(f"Epoch {epoch+1}")
-        elosses = []
-        for i, (inputs, labels) in enumerate(trainLoader):
-            inputs = to_device(inputs, pyt_device)
-            labels = to_device(labels, pyt_device)
-
-            optimizer.zero_grad()
-            # Forward propagation
-            outputs = model(inputs)
-            # Backpropagation
-            loss = criterion(outputs, labels)
-            if 'cuda' in device:
-                elosses.append(loss.data.cpu().numpy().item())
-            else:
-                elosses.append(loss.data.numpy().item())
-            loss.backward()
-            # Gradient descent
-            optimizer.step()
-            # Logging
-            if loss_data_points > 0 and (i+1) % loss_itr == 0:
-                loss_out.append(dict(batch=i+1,
-                                     num_batches=num_batches,
-                                     epoch=epoch+1,
-                                     num_epochs=num_epochs,
-                                     loss=loss,
-                                     time=round(time()-lt)))
-                lt = time()
-        mean_elosses = np.mean(elosses)
-        epbar.set_postfix({'train_loss':f"{mean_elosses:.9f}", 'time:': f"{round(time()-ts)}s"})
-        ts = time()
-
-    print (f'Final loss: {loss}')
-
-    model.eval()
-    if save_model:
-        torch.save(model.state_dict(), 'model_1.pth')
-        print('Model saved as model_1.pth')
-
-    return model, loss_out
 
 def predict(model, X, y, device='cpu'):
     pyt_device = torch.device(device)
