@@ -36,36 +36,36 @@ class NNBranchModel(nn.Module):
         super().__init__()
         # Energy map net
         
-        self.linear1 = nn.Linear(in_features=inputSize-1, out_features=1000)
+        self.linear1 = nn.Linear(in_features=inputSize-1, out_features=100)
         self.relu1 = nn.ReLU()
-        self.linear2 = nn.Linear(in_features=1000, out_features=1000)
+        self.linear2 = nn.Linear(in_features=100, out_features=100)
         self.relu2 = nn.ReLU()
         self.dropout2 = nn.Dropout(0.5)
-        self.lineara2 = nn.Linear(in_features=1000, out_features=1000)
-        self.relu2a = nn.ReLU()
-        self.dropout2a = nn.Dropout(0.5)
-        self.linear2b = nn.Linear(in_features=1000, out_features=1000)
-        self.relu2b = nn.ReLU()
-        self.dropout2b = nn.Dropout(0.5)
-        self.linear2c = nn.Linear(in_features=500, out_features=500)
-        self.relu2c = nn.ReLU()
-        self.dropout2c = nn.Dropout(0.5)
-        self.linear3 = nn.Linear(in_features=500, out_features=250)
+        self.linear3 = nn.Linear(in_features=100, out_features=100)
         self.relu3 = nn.ReLU()
         self.dropout3 = nn.Dropout(0.5)
-        self.linear4 = nn.Linear(in_features=250, out_features=150)
+        self.linear4 = nn.Linear(in_features=100, out_features=100)
         self.relu4 = nn.ReLU()
         self.dropout4 = nn.Dropout(0.5)
-        self.linear5 = nn.Linear(in_features=150, out_features=100)
+        self.linear5 = nn.Linear(in_features=100, out_features=100)
         self.relu5 = nn.ReLU()
         self.dropout5 = nn.Dropout(0.5)
         self.linear6 = nn.Linear(in_features=100, out_features=100)
-
-        self.linear_a_1 = nn.Linear(in_features=1, out_features=1)
+        
+        self.linear_a_1 = nn.Linear(in_features=1, out_features=10)
         self.relu_a_1 = nn.ReLU()
 
         
-        self.bilinear1 = nn.Bilinear(in1_features=1, in2_features=100, out_features=outputSize)
+        self.bilinear1 = nn.Bilinear(in1_features=10, in2_features=100, out_features=50)
+        self.relu_bi_1 = nn.ReLU()
+        
+        self.linear_b_1 = nn.Linear(in_features=50, out_features=50)
+        self.relu_b_1 = nn.ReLU()
+        self.dropout_b_1 = nn.Dropout(0.5)
+        self.linear_b_2 = nn.Linear(in_features=50, out_features=50)
+        self.relu_b_2 = nn.ReLU()
+        self.dropout_b_2 = nn.Dropout(0.5)
+        self.linear_b_3 = nn.Linear(in_features=50, out_features=outputSize)
         
 
     def forward(self, X):
@@ -87,7 +87,15 @@ class NNBranchModel(nn.Module):
         
         front = self.linear_a_1(X[:,0:1])
         front = self.relu_a_1(front)
-
-        final = self.bilinear1(front, out)
+        out = self.bilinear1(front, out)
         
-        return final
+        out = self.linear_b_1(out)
+        out = self.relu_b_1(out)
+        out = self.dropout_b_1(out)
+        out = self.linear_b_2(out)
+        out = self.relu_b_2(out)
+        out = self.dropout_b_2(out)
+        out = self.linear_b_3(out)
+               
+        
+        return out
