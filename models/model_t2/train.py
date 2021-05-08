@@ -4,7 +4,7 @@ import os
 import torch
 import torch.nn as nn
 from dataset import Dataset, to_device
-from model import NNModel, NNModelEx
+from model import NNBranchModel
 from time import time
 from tqdm import tqdm_notebook as tqdm
 
@@ -27,7 +27,9 @@ def load_model_with_config(config, training_set=None, force_train=False):
         if not training_set:
             raise Exception('Cannot create model without training_set')
         print("New model created")
-        net = NNModelEx(inputSize=training_set.num_X, outputSize=training_set.num_y, **config['model_definition'])
+
+        net = NNBranchModel(inputSize=training_set.num_X, outputSize=training_set.num_y)
+        
         loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
 #         loss_func = torch.nn.L1Loss()
 #         optimizer = torch.optim.Adam(net.parameters(), lr=config['lr'], weight_decay=config['weight_decay'])
