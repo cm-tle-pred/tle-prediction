@@ -23,38 +23,73 @@ def normalize_all_columns(df, reverse=False):
     Dataframe or Series
         The normalized result
     '''
-    from_180_deg = ['X_INCLINATION_1']
-    from_360_deg = ['X_RA_OF_ASC_NODE_1', 'X_MEAN_ANOMALY_1', 'X_ARG_OF_PERICENTER_1']
+#     'X_INCLINATION_1', 'y_INCLINATION'
+    from_180_deg = ['X_INCLINATION_1', 'y_INCLINATION']
+#     'X_MEAN_ANOMALY_1', 'X_RA_OF_ASC_NODE_1', 'X_ARG_OF_PERICENTER_1', 'y_RA_OF_ASC_NODE', 'y_ARG_OF_PERICENTER'
+    from_360_deg = ['X_MEAN_ANOMALY_1', 'X_RA_OF_ASC_NODE_1', 'X_ARG_OF_PERICENTER_1', 'y_RA_OF_ASC_NODE', 'y_ARG_OF_PERICENTER']
 
     df[from_180_deg] = normalize(df[from_180_deg],min=0,max=180,reverse=reverse)
     df[from_360_deg] = normalize(df[from_360_deg],min=0,max=360,reverse=reverse)
     
+#     'X_delta_EPOCH'
+    df['X_delta_EPOCH'] = normalize(df['X_delta_EPOCH'],min=0,max=7,reverse=reverse)
+    
+#     'X_EPOCH_JD_1', 'X_EPOCH_JD_2', 
     df['X_EPOCH_JD_1'] = normalize(df['X_EPOCH_JD_1'], min=2447892.5, max=2459305.5,reverse=reverse)
     df['X_EPOCH_JD_2'] = normalize(df['X_EPOCH_JD_2'], min=2447892.5, max=2459305.5,reverse=reverse)
+    
+#     'X_ECCENTRICITY_1', 'y_ECCENTRICITY'
     df['X_ECCENTRICITY_1'] = normalize(df['X_ECCENTRICITY_1'],min=0,max=0.25,reverse=reverse)
+    df['y_ECCENTRICITY'] = normalize(df['y_ECCENTRICITY'],min=0,max=0.25,reverse=reverse)
 
+#     'X_SUNSPOTS_1D_1', 'X_SUNSPOTS_3D_1', 'X_SUNSPOTS_7D_1'
     df['X_SUNSPOTS_1D_1'] = normalize(df['X_SUNSPOTS_1D_1'],min=0,max=500,reverse=reverse)
     df['X_SUNSPOTS_3D_1'] = normalize(df['X_SUNSPOTS_3D_1'],min=0,max=500,reverse=reverse)
     df['X_SUNSPOTS_7D_1'] = normalize(df['X_SUNSPOTS_7D_1'],min=0,max=500,reverse=reverse)
     
+#     'X_MEAN_MOTION_1', 'y_MEAN_MOTION'
     df['X_MEAN_MOTION_1'] = normalize(df['X_MEAN_MOTION_1'],min=11.25,max=20,reverse=reverse)
-    
+    df['y_MEAN_MOTION'] = normalize(df['y_MEAN_MOTION'],min=11.25,max=20,reverse=reverse)
+
+#     'X_YEAR_1'
     df['X_YEAR_1'] = normalize(df['X_YEAR_1'],min=1990,max=2021,reverse=reverse)
 
-    df['X_delta_EPOCH'] = normalize(df['X_delta_EPOCH'],min=0,max=7,reverse=reverse)
-    
-    sat_r = ['X_SAT_RX_1', 'X_SAT_RY_1', 'X_SAT_RZ_1', 'X_SGP4_SAT_RX', 'X_SGP4_SAT_RY', 'X_SGP4_SAT_RZ']
-    sat_v = ['X_SAT_VX_1', 'X_SAT_VY_1', 'X_SAT_VZ_1', 'X_SGP4_SAT_VX', 'X_SGP4_SAT_VY', 'X_SGP4_SAT_VZ']
+#     'X_SAT_RX_1', 'X_SAT_RY_1', 'X_SAT_RZ_1'
+    sat_r = ['X_SAT_RX_1', 'X_SAT_RY_1', 'X_SAT_RZ_1']
     df[sat_r] = normalize(df[sat_r], min=-8000, max=8000, range=[-1,1],reverse=reverse)
+    
+#     'X_SEMIMAJOR_AXIS_1'
+    df['X_SEMIMAJOR_AXIS_1'] = normalize(df['X_SEMIMAJOR_AXIS_1'], min=6500, max=8500, reverse=reverse)
+
+#     'X_PERIOD_1'
+    df['X_PERIOD_1'] = normalize(df['X_PERIOD_1'], min=8.5, max=13, reverse=reverse)
+
+#     'X_APOAPSIS_1', 'X_PERIAPSIS_1'
+    apo_peri = ['X_APOAPSIS_1', 'X_PERIAPSIS_1']
+    df[apo_peri] = normalize(df[apo_peri], min=100, max=4000, reverse=reverse)
+    
+#     'X_RCS_SIZE_1'
+    df['X_RCS_SIZE_1'] = normalize(df['X_RCS_SIZE_1'], min=-1, max=2, reverse=reverse)
+
+#     'X_SAT_VX_1', 'X_SAT_VY_1', 'X_SAT_VZ_1'
+    sat_v = ['X_SAT_VX_1', 'X_SAT_VY_1', 'X_SAT_VZ_1']
     df[sat_v] = normalize(df[sat_v], min=-8, max=8, range=[-1,1],reverse=reverse)
     
+    
     # not normalized
-#     'X_BSTAR',  # range is acceptable
-#     'X_MEAN_MOTION_DOT', # range is acceptable
-#     'X_EPOCH_FR',
-#     'X_DAY_OF_YEAR_COS', 'X_DAY_OF_YEAR_SIN',
-#     'X_SYNODIC_MONTH_COS', 'X_SYNODIC_MONTH_SIN', 'X_SIDEREAL_MONTH_COS', 'X_SIDEREAL_MONTH_SIN', 
-#     'X_AIR_MONTH_AVG_TEMP', 'X_WATER_MONTH_AVG_TEMP', # range is small enough
+# 'X_EPOCH_FR_1', 'X_EPOCH_FR_2' # already in range
+# 'X_BSTAR_1', 'y_BSTAR' # acceptable range
+# 'X_MEAN_MOTION_DOT_1'  # acceptable range
+# 'X_MEAN_ANOMALY_COS_1',
+# 'X_MEAN_ANOMALY_SIN_1',
+# 'X_INCLINATION_COS_1',
+# 'X_INCLINATION_SIN_1',
+# 'X_RA_OF_ASC_NODE_COS_1',
+# 'X_RA_OF_ASC_NODE_SIN_1',
+# 'X_DAY_OF_YEAR_COS_1',
+# 'X_DAY_OF_YEAR_SIN_1',
+# 'X_AIR_MONTH_AVG_TEMP_1',
+# 'X_WATER_MONTH_AVG_TEMP_1',
 
     return df
 
