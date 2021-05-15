@@ -27,11 +27,11 @@ def load_model_with_config(config, training_set=None, force_train=False):
         if not training_set:
             raise Exception('Cannot create model without training_set')
         print("New model created")
-        net = NNBig(training_set.num_X, config['base_head_out'], config['feature_head_out'], config['base_model_definition'], config['model_definition'])
+        net = NNBig(training_set.num_X, config['feature_head_out'], config['model_definition'])
         loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
 #         loss_func = torch.nn.L1Loss()
 #         optimizer = torch.optim.Adam(net.parameters(), lr=config['lr'], weight_decay=config['weight_decay'])
-        optimizer = torch.optim.SGD(net.parameters(), lr=config['lr'], momentum=config['momentum'])
+        optimizer = torch.optim.SGD(net.parameters(), lr=config['lr'], momentum=config['momentum'], weight_decay=config['weight_decay'])
         mean_losses = []
         next_epoch = 0
         save_model_with_config(config, net=net, loss_func=loss_func, optimizer=optimizer,
