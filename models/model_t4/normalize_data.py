@@ -26,7 +26,7 @@ def normalize_all_columns(df, reverse=False):
 #     'X_INCLINATION_1', 'y_INCLINATION'
     from_180_deg = ['X_INCLINATION_1', 'y_INCLINATION']
 #     'X_MEAN_ANOMALY_1', 'X_RA_OF_ASC_NODE_1', 'X_ARG_OF_PERICENTER_1', 'y_RA_OF_ASC_NODE', 'y_ARG_OF_PERICENTER'
-    from_360_deg = ['X_MEAN_ANOMALY_1', 'X_RA_OF_ASC_NODE_1', 'X_ARG_OF_PERICENTER_1', 'y_RA_OF_ASC_NODE', 'y_ARG_OF_PERICENTER']
+    from_360_deg = ['X_MEAN_ANOMALY_1', 'X_RA_OF_ASC_NODE_1', 'X_ARG_OF_PERICENTER_1', 'y_RA_OF_ASC_NODE', 'y_ARG_OF_PERICENTER', 'y_MEAN_ANOMALY']
 
     df[from_180_deg] = normalize(df[from_180_deg],min=0,max=180,reverse=reverse)
     df[from_360_deg] = normalize(df[from_360_deg],min=0,max=360,reverse=reverse)
@@ -74,6 +74,14 @@ def normalize_all_columns(df, reverse=False):
 #     'X_SAT_VX_1', 'X_SAT_VY_1', 'X_SAT_VZ_1'
     sat_v = ['X_SAT_VX_1', 'X_SAT_VY_1', 'X_SAT_VZ_1']
     df[sat_v] = normalize(df[sat_v], min=-8, max=8, range=[-1,1],reverse=reverse)
+    
+#     'y_REV_MA_REG'
+    df['y_REV_MA_REG'] = normalize(df['y_REV_MA_REG'],min=0,max=90,reverse=reverse)
+
+
+# already normalized in the data preprocessing...
+# y_ARG_OF_PERICENTER_REG
+# y_RA_OF_ASC_NODE_REG
     
     
     # not normalized

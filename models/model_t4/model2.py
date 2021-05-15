@@ -21,9 +21,6 @@ class NNModelEx(nn.Module):
         self.incl_idx = self.X_cols.index('X_INCLINATION_1')
         self.ecc_idx = self.X_cols.index('X_ECCENTRICITY_1')
         self.mm_idx = self.X_cols.index('X_MEAN_MOTION_1')
-        self.peri_idx = self.X_cols.index('X_ARG_OF_PERICENTER_1')
-        self.raan_idx = self.X_cols.index('X_RA_OF_ASC_NODE_1')
-        self.ma_idx = self.X_cols.index('X_MEAN_ANOMALY_1')
         self.epoch_diff_idx = self.X_cols.index('X_delta_EPOCH')
 
         network = []
@@ -57,19 +54,6 @@ class NNModelEx(nn.Module):
         self.bilinear_mm_e = nn.Bilinear(in1_features=p, in2_features=1, out_features=1)
         self.bilinear_mm = nn.Bilinear(in1_features=1, in2_features=1, out_features=1)
 
-        self.linear_raan = nn.Linear(in_features=p, out_features=1)
-        self.bilinear_raan_e = nn.Bilinear(in1_features=p, in2_features=1, out_features=1)
-        self.bilinear_raan = nn.Bilinear(in1_features=1, in2_features=1, out_features=1)
-
-        self.linear_peri = nn.Linear(in_features=p, out_features=1)
-        self.bilinear_peri_e = nn.Bilinear(in1_features=p, in2_features=1, out_features=1)
-        self.bilinear_peri = nn.Bilinear(in1_features=1, in2_features=1, out_features=1)
-
-        self.linear_ma = nn.Linear(in_features=p, out_features=1)
-        self.bilinear_ma_e = nn.Bilinear(in1_features=p, in2_features=1, out_features=1)
-        self.bilinear_ma = nn.Bilinear(in1_features=1, in2_features=1, out_features=1)
-
-
     def forward(self, X):
         out = self.net(X)
         
@@ -87,24 +71,5 @@ class NNModelEx(nn.Module):
         mme = self.bilinear_mm_e(out, X[:,self.epoch_diff_idx:self.epoch_diff_idx+1])
         mm = self.bilinear_mm(mme, mm)
         mm[:,0] += X[:,self.mm_idx]
-
-        raan = self.linear_raan(out)
-        raane = self.bilinear_raan_e(out, X[:,self.epoch_diff_idx:self.epoch_diff_idx+1])
-        raan = self.bilinear_raan(raane, raan)
-        raan[:,0] += X[:,self.raan_idx]
-
-        peri = self.linear_peri(out)
-        perie = self.bilinear_peri_e(out, X[:,self.epoch_diff_idx:self.epoch_diff_idx+1])
-        peri = self.bilinear_peri(perie, peri)
-        peri[:,0] += X[:,self.peri_idx]
         
-        ma = self.linear_ma(out)
-        mae = self.bilinear_ma_e(out, X[:,self.epoch_diff_idx:self.epoch_diff_idx+1])
-        mae[:,0] = mae[:,0] * X[:,self.mm_idx]
-        ma = self.bilinear_peri(mae, ma)
-        ma[:,0] += X[:,self.ma_idx]
-
-
-# ['y_INCLINATION', 'y_ECCENTRICITY', 'y_MEAN_MOTION', 'y_RA_OF_ASC_NODE_REG', 'y_RA_OF_ASC_NODE', 'y_ARG_OF_PERICENTER_REG', 'y_ARG_OF_PERICENTER', 'y_BSTAR', 'y_REV_MA_REG', 'y_MEAN_ANOMALY']
-
-        return torch.cat((incl, ecc, mm, raan, peri, ma), 1)
+        return torch.cat((incl, ecc, mm), 1)
