@@ -40,10 +40,10 @@ class NNBiEpochBiasModel(nn.Module):
         if X_c == None:
             in_e = self.bilinear_in_e(X, X_e)
         else:
-            alt_e = (X_c * X_e).unsqueeze(0)
+            alt_e = torch.mul(X_c, X_e)
             in_e = self.linear_alt(alt_e)
         in_o = self.bilinear_in(in_e, in_o)
-        in_o[:,0] += X_f
+        in_o[:,0] += X_f[:,0]
         return in_o
 
 class NNSingleFeatureModel(nn.Module):
@@ -62,8 +62,8 @@ class NNSingleFeatureModel(nn.Module):
         target_out = self.model(
             head_out,
             X[:,self.epoch_diff_index:self.epoch_diff_index+1],
-            X[:,self.feature_index],
-            (X[:,self.mag_index] if not self.mag_index == None else None),
+            X[:,self.feature_index:self.feature_index+1],
+            X[:,self.mag_index:self.mag_index+1] if not self.mag_index == None else None,
         )
         return target_out
 
@@ -92,13 +92,22 @@ class NNBig(nn.Module):
         self.ma_idx = self.X_cols.index('X_MEAN_ANOMALY_1')
         self.epoch_diff_idx = self.X_cols.index('X_delta_EPOCH')
 
-        self.incl_model = NNSingleFeatureModel(inputSize, feature_head_out, self.ma_idx, self.epoch_diff_idx, None, model_config)
-
-
+        self.incl_model = NNSingleFeatureModel(inputSize, feature_head_out, self.incl_idx, self.epoch_diff_idx, None, model_config)
+        self.ecc_model = NNSingleFeatureModel(inputSize, feature_head_out, self.ecc_idx, self.epoch_diff_idx, None, model_config)
+        self.mm_model = NNSingleFeatureModel(inputSize, feature_head_out, self.mm_idx, self.epoch_diff_idx, None, model_config)
+        self.peri_model = NNSingleFeatureModel(inputSize, feature_head_out, self.peri_idx, self.epoch_diff_idx, None, model_config)
+        self.raan_model = NNSingleFeatureModel(inputSize, feature_head_out, self.raan_idx, self.epoch_diff_idx, None, model_config)
+        self.ma_model = NNSingleFeatureModel(inputSize, feature_head_out, self.ma_idx, self.epoch_diff_idx, self.mm_idx, model_config)
         
     def forward(self, X):
         incl_out = self.incl_model(X)
-        return incl_out
+        ecc_out = self.ecc_model(X)
+        mm_out = self.mm_model(X)
+        peri_out = self.peri_model(X)
+        raan_out = self.raan_model(X)
+        ma_out = self.ma_model(X)
+#         return ma_out
+        return torch.cat((incl_out, ecc_out, mm_out, peri_out, raan_out, ma_out),1)
 #         incl_head_out = self.incl_head(X)
 #         incl_target_out = self.incl_model(
 #             incl_head_out,

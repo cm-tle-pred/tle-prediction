@@ -62,7 +62,7 @@ def train_model(X_train, y_train, X_test, y_test, configurations, force_train=Fa
     net, loss_func, optimizer, mean_losses, next_epoch, = load_model_with_config(configurations, training_set, force_train)
     to_device(net, pyt_device)
     net.train()
-    print(net)
+#     print(net)
 
     if next_epoch == configurations['max_epochs']:
         print("Model finished training. To retrain set force_train = True ")
