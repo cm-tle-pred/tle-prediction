@@ -46,7 +46,7 @@ def save_model_with_config(config, **kwargs):
     f = f"{path}/{config['model_identifier']}.pth"
     torch.save(kwargs, f)
 
-def train_model(X_train, y_train, X_test, y_test, configurations, force_train=False):
+def train_model(X_train, y_train, X_test, y_test, configurations, force_train=False, force_optimizer=None):
 
     path = configurations.get('model_path', None)
     torch.manual_seed(configurations.get('random_seed',0))
@@ -60,6 +60,10 @@ def train_model(X_train, y_train, X_test, y_test, configurations, force_train=Fa
 
 
     net, loss_func, optimizer, mean_losses, next_epoch, = load_model_with_config(configurations, training_set, force_train)
+    
+    if force_optimizer != None:
+        optimizer = force_optimizer
+    
     to_device(net, pyt_device)
     net.train()
 #     print(net)
