@@ -46,8 +46,25 @@ class NNBiEpochBiasModel(nn.Module):
         in_o[:,0] += X_f[:,0]
         return in_o
 
+class NNMeanAnomalyModel(nn.Module):
+    def __init__(self, inputSize):
+        super().__init__()
+        self.linear_in = nn.Linear(in_features=inputSize, out_features=1)
+
+    def forward(self, X, X_e, X_f, X_c):
+        in_o = self.linear_in(X)
+        
+        # this is essentially doing a straight up mean motion * day delta normalized according to data normalization
+        # as the base propagation if we just propagated with no other forces
+        new_c = (X_c * (20 - 11.25)) + 11.25
+        new_e = X_e * 7 / 90
+        base_prop = torch.mul(new_c, new_e)
+        
+        in_o[:,0] = in_o[:,0] + base_prop[:,0] + X_f[:,0]
+        return in_o
+
 class NNSingleFeatureModel(nn.Module):
-    def __init__(self, inputSize, feature_head_out, feature_index, epoch_diff_index, mag_index, model_config):
+    def __init__(self, inputSize, feature_head_out, feature_index, epoch_diff_index, mag_index, alternate_model, model_config):
         super().__init__()
         self.head_out_count = feature_head_out
         self.feature_index = feature_index
@@ -55,7 +72,7 @@ class NNSingleFeatureModel(nn.Module):
         self.mag_index = mag_index
         
         self.head = NNModelEx(inputSize, self.head_out_count, *model_config)
-        self.model = NNBiEpochBiasModel(self.head_out_count)
+        self.model = alternate_model(self.head_out_count)
 
     def forward(self, X):
         head_out = self.head(X)
