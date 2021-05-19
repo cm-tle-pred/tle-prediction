@@ -1,6 +1,18 @@
 import torch
 import torch.nn as nn
 
+def tims_mse_loss(input, target):
+    worst_k = input.data.nelement() // 4
+    se = (input - target) ** 2
+    worsts_in_batch = torch.topk(se, worst_k, dim=0)
+    return ((torch.sum(se)-torch.sum(worsts_in_batch.values)) / (input.data.nelement()-worst_k))
+
+def tims_mae_loss(input, target):
+    worst_k = input.data.nelement() // 4
+    ae = torch.absolute(input - target)
+    worsts_in_batch = torch.topk(ae, worst_k, dim=0)
+    return ((torch.sum(ae)-torch.sum(worsts_in_batch.values)) / (input.data.nelement()-worst_k))
+
 class NNModelEx(nn.Module):
     def __init__(self, inputSize, outputSize, *args):
         super().__init__()
@@ -56,11 +68,11 @@ class NNMeanAnomalyModel(nn.Module):
         
         # this is essentially doing a straight up mean motion * day delta normalized according to data normalization
         # as the base propagation if we just propagated with no other forces
-        new_c = (X_c * (20 - 11.25)) + 11.25
-        new_e = X_e * 7 / 90
-        base_prop = torch.mul(new_c, new_e)
+        new_c = (X_c * (20 - 11.25)) + 11.25 # this is manually undoing the normalization in normalize_data.py, hardcoded!
+        new_e = X_e * 7
+        base_prop = torch.mul(new_c, new_e) / 90
         
-        in_o[:,0] = in_o[:,0] + base_prop[:,0] + X_f[:,0]
+        in_o[:,0] = in_o[:,0] + base_prop[:,0] + (X_f[:,0] / 90)
         return in_o
 
 class NNSingleFeatureModel(nn.Module):
