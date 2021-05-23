@@ -13,6 +13,12 @@ def tims_mae_loss(input, target):
     worsts_in_batch = torch.topk(ae, worst_k, dim=0)
     return ((torch.sum(ae)-torch.sum(worsts_in_batch.values)) / (input.data.nelement()-worst_k))
 
+def tim95_mse_loss(input, target):
+    worst_k = input.data.nelement() // 20
+    se = (input - target) ** 2
+    worsts_in_batch = torch.topk(se, worst_k, dim=0)
+    return ((torch.sum(se)-torch.sum(worsts_in_batch.values)) / (input.data.nelement()-worst_k))
+
 class NNModelEx(nn.Module):
     def __init__(self, inputSize, outputSize, *args):
         super().__init__()
@@ -54,6 +60,20 @@ class NNBiEpochBiasModel(nn.Module):
         else:
             alt_e = torch.mul(X_c, X_e)
             in_e = self.linear_alt(alt_e)
+        in_o = self.bilinear_in(in_e, in_o)
+        in_o[:,0] += X_f[:,0]
+        return in_o
+
+class NNBiEpochNoBiasModel(nn.Module):
+    def __init__(self, inputSize):
+        super().__init__()
+        self.linear_in = nn.Linear(in_features=inputSize, out_features=1, bias=False)
+        self.bilinear_in_e = nn.Bilinear(in1_features=inputSize, in2_features=1, out_features=1, bias=False)
+        self.bilinear_in = nn.Bilinear(in1_features=1, in2_features=1, out_features=1, bias=False)
+
+    def forward(self, X, X_e, X_f, unused=None):
+        in_o = self.linear_in(X)
+        in_e = self.bilinear_in_e(X, X_e)
         in_o = self.bilinear_in(in_e, in_o)
         in_o[:,0] += X_f[:,0]
         return in_o
