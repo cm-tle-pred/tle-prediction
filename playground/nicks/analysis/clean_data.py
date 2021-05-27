@@ -30,9 +30,13 @@ def normalize_all_columns(df, reverse=False):
     df[from_360_deg] = normalize(df[from_360_deg],min=0,max=360,reverse=reverse)
     df['ECCENTRICITY'] = normalize(df['ECCENTRICITY'],min=0,max=0.25,reverse=reverse)
     df['MEAN_MOTION'] = normalize(df['MEAN_MOTION'],min=11.25,max=20,reverse=reverse)
-    df['SUNSPOTS_1D'] = normalize(df['SUNSPOTS_1D'],min=0,max=500,reverse=reverse)
-    df['SUNSPOTS_3D'] = normalize(df['SUNSPOTS_3D'],min=0,max=500,reverse=reverse)
-    df['SUNSPOTS_7D'] = normalize(df['SUNSPOTS_7D'],min=0,max=500,reverse=reverse)
+    
+    try:
+        df['SUNSPOTS_1D'] = normalize(df['SUNSPOTS_1D'],min=0,max=500,reverse=reverse)
+        df['SUNSPOTS_3D'] = normalize(df['SUNSPOTS_3D'],min=0,max=500,reverse=reverse)
+        df['SUNSPOTS_7D'] = normalize(df['SUNSPOTS_7D'],min=0,max=500,reverse=reverse)
+    except:
+        pass
 
     try:
         # NOTE: Date fields & B* will not be reversed
@@ -54,7 +58,7 @@ def normalize_all_columns(df, reverse=False):
 
     return df
 
-def normalize_epoch_diff(df, drop_epoch=False):
+def normalize_epoch_diff(df, drop_epoch=False, reverse=False):
     '''
     Normalizes the differences in epoch.  Assumes columns EPOCH and EPOCH_y exist.
     Adds the following columns:
@@ -80,12 +84,18 @@ def normalize_epoch_diff(df, drop_epoch=False):
     sec = 86400
     mss = 1000000
     day_range = (datetime.strptime(max_date, '%Y-%m-%d') - datetime.strptime(min_date, '%Y-%m-%d')).days
-    diff = df.EPOCH-df.EPOCH_y
+    
+    if not reverse:
+        diff = df.EPOCH-df.EPOCH_y
 
-    df['epoch_day_diff'] = normalize(diff.dt.days, min=-day_range, max=day_range, range=[-1,1])
-    df['epoch_sec_diff'] = normalize(diff.dt.seconds, min=0, max=sec)
-    df['epoch_ms_diff'] = normalize(diff.dt.microseconds, min=0, max=mss)
-
+        df['epoch_day_diff'] = normalize(diff.dt.days, min=-day_range, max=day_range, range=[-1,1])
+        df['epoch_sec_diff'] = normalize(diff.dt.seconds, min=0, max=sec)
+        df['epoch_ms_diff'] = normalize(diff.dt.microseconds, min=0, max=mss)
+    else:
+        df['epoch_day_diff'] = normalize(df['epoch_day_diff'], min=-day_range, max=day_range, range=[-1,1], reverse=reverse)
+        df['epoch_sec_diff'] = normalize(df['epoch_sec_diff'], min=0, max=sec, reverse=reverse)
+        df['epoch_ms_diff'] = normalize(df['epoch_ms_diff'], min=0, max=mss, reverse=reverse)
+        
     if drop_epoch:
         df.drop(['EPOCH', 'EPOCH_y'], axis=1, inplace=True)
 
